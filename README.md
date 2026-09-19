@@ -106,3 +106,5 @@ GitHub Actions 在推送 `v*` 标签时构建 macOS、Windows、Linux 的 x64 / 
 工作流先执行前端测试和构建，再创建草稿 Release。六组平台构建全部成功后才公开 Release，并上传 `SHA256SUMS.txt`。失败时草稿保留，可重跑失败的任务；已公开版本不能覆盖发布，应创建新版本。
 
 Windows ARM64 提供 NSIS 安装程序，Windows x64 另提供 MSI；macOS 提供 DMG 和应用压缩包；Linux 提供 DEB、RPM 和 AppImage。当前未配置平台签名证书或 Apple 公证凭据。
+
+发布文件统一包含版本、系统和架构。Windows 另提供不带 `-setup` 后缀的免安装 EXE（需要系统 WebView2 Runtime）。已有版本可通过 Actions → Windows standalone EXE 补建 x64 / ARM64 可执行文件并更新校验文件。

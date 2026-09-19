@@ -149,6 +149,8 @@ jobs:
           tauriScript: npx tauri
           releaseId: ${{ needs.prepare.outputs.release_id }}
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
+          assetNamePattern: 'Calendar_[version]_${{ runner.os }}_[arch][setup].[ext]'
+          uploadPlainBinary: ${{ runner.os == 'Windows' }}
           includeUpdaterJson: false
           retryAttempts: 2
 
