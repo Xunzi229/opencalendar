@@ -1,6 +1,9 @@
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
-import type { AlmanacRecord, AlmanacResult } from '../../../shared/almanac/types'
+import type {
+  AlmanacRecord,
+  AlmanacResult,
+} from '../../../shared/almanac/types'
 import type { ClockSnapshot } from '../../../shared/clock/types'
 
 export interface DesktopApi {
@@ -17,12 +20,14 @@ export interface DesktopApi {
 
 const BROWSER_API_KEY = 'calendar.tianApiKey'
 
-function isTauriRuntime(): boolean {
+export function isTauriRuntime(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
 
-  const runtimeWindow = window as typeof window & { __TAURI_INTERNALS__?: unknown }
+  const runtimeWindow = window as typeof window & {
+    __TAURI_INTERNALS__?: unknown
+  }
 
   return typeof runtimeWindow.__TAURI_INTERNALS__ !== 'undefined'
 }
@@ -38,7 +43,10 @@ function createClockSnapshot(): ClockSnapshot {
   }
 }
 
-function subscribe<T>(eventName: string, listener: (payload: T) => void): () => void {
+function subscribe<T>(
+  eventName: string,
+  listener: (payload: T) => void,
+): () => void {
   if (!isTauriRuntime()) {
     return () => {}
   }
@@ -123,4 +131,6 @@ const tauriDesktopApi: DesktopApi = {
   },
 }
 
-export const desktopApi: DesktopApi = isTauriRuntime() ? tauriDesktopApi : browserDesktopApi
+export const desktopApi: DesktopApi = isTauriRuntime()
+  ? tauriDesktopApi
+  : browserDesktopApi
