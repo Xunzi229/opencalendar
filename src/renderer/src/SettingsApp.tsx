@@ -105,4 +105,3 @@ export function SettingsApp(): React.ReactElement {
     </main>
   )
 }
-
