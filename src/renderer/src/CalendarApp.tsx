@@ -403,7 +403,7 @@ export function CalendarApp(): React.ReactElement {
           <div>
             <img
               className="app-mark"
-              src="./calendar-icon.svg"
+              src={`./date-icons/${now.getDate()}.svg`}
               alt=""
               aria-hidden="true"
             />

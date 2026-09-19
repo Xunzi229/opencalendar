@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "tauri:dev": "tauri dev",
-    "icons": "node scripts/generate-icons.mjs",
+    "icons": "node scripts/generate-icons.mjs && node scripts/generate-date-icons.mjs",
     "build": "vite build",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",

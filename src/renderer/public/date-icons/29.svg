@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>OpenCalendar</title>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0.3" y2="1">
+      <stop stop-color="#ffffff"/><stop offset="0.7" stop-color="#fdfcfb"/><stop offset="1" stop-color="#eae9e7"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0.8" y2="1">
+      <stop stop-color="#ff766b"/><stop offset="0.52" stop-color="#f45351"/><stop offset="1" stop-color="#e43c47"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="0.6" y2="1">
+      <stop stop-color="#454753"/><stop offset="1" stop-color="#23242d"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="13" flood-color="#1f2332" flood-opacity="0.16"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#1f2332" flood-opacity="0.10"/>
+    </filter>
+    <clipPath id="tile"><rect x="100" y="92" width="824" height="824" rx="184"/></clipPath>
+  </defs>
+  <rect x="100" y="92" width="824" height="824" rx="184" fill="url(#paper)" filter="url(#shadow)"/>
+  <g clip-path="url(#tile)">
+    <path d="M100 92H924V344H100Z" fill="url(#red)"/>
+    <path d="M100 344H924" stroke="#b9303a" stroke-opacity="0.20" stroke-width="3"/>
+    <path d="M142 827H882" stroke="#d8d7d5" stroke-width="3"/>
+    <path d="M156 847H868" stroke="#ffffff" stroke-width="3"/>
+    <path d="M166 866H858" stroke="#d8d7d5" stroke-width="2"/>
+  </g>
+  <rect x="102" y="94" width="820" height="820" rx="182" fill="none" stroke="#ffffff" stroke-opacity="0.48" stroke-width="3"/>
+  <g fill="#bc3540" opacity="0.34">
+    <rect x="280" y="152" width="72" height="112" rx="36"/>
+    <rect x="672" y="152" width="72" height="112" rx="36"/>
+  </g>
+  <g fill="#fff7f2">
+    <rect x="291" y="125" width="50" height="108" rx="25"/>
+    <rect x="683" y="125" width="50" height="108" rx="25"/>
+  </g>
+  <!-- Date numerals are paths, so all platforms render exactly the same mark. -->
+  <g transform="translate(280 429) scale(4)" fill="none" stroke="#292a33" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(0 0)" d="M5 18C10 -1 43 0 43 21C43 35 10 48 5 71H45"/><path transform="translate(66 0)" d="M8 68C40 82 49 46 44 19C39 -7 3 -1 4 24C5 47 38 46 44 28"/></g>
+</svg>

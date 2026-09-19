@@ -7,12 +7,15 @@ use std::{
   time::{Duration, Instant},
 };
 
-use chrono::Local;
+mod date_icon;
+#[cfg(any(target_os = "macos", test))]
+mod tray_position;
+
+use chrono::{Datelike, Local};
 use reqwest::Client;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use tauri::{
-  image::Image,
   menu::{Menu, MenuItem},
   PhysicalPosition,
   Position,
@@ -212,8 +215,8 @@ fn main() {
     .setup(|app| {
       let state = initialize_state(app)?;
       app.manage(Arc::new(state));
-      start_clock_broadcast(app.handle().clone());
       build_tray(app)?;
+      start_clock_broadcast(app.handle().clone());
 
       if let Some(window) = app.get_webview_window("main") {
         let app_handle = app.handle().clone();
@@ -296,11 +299,12 @@ fn build_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
   let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
   let menu = Menu::with_items(app, &[&show, &hide, &settings, &quit])?;
   let app_handle = app.handle().clone();
-  let icon = Image::from_bytes(include_bytes!("../icons/icon.png"))?;
+  let icon = date_icon::for_day(Local::now().day())?;
   let tray_builder = TrayIconBuilder::with_id("calendar-tray")
     .menu(&menu)
     .show_menu_on_left_click(false)
-    .icon(icon.clone());
+    .icon(icon.clone())
+    .tooltip(format!("日历 · {}", Local::now().format("%Y-%m-%d")));
 
   tray_builder
     .on_menu_event(move |app, event| match event.id.as_ref() {
@@ -331,6 +335,7 @@ fn build_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn show_main_window(app: &AppHandle) {
+  update_date_icon(app);
   if let Some(window) = app.get_webview_window("main") {
     if let Ok(mut last_shown_at) = app.state::<Arc<AppState>>().last_main_window_shown_at.lock() {
       *last_shown_at = Some(Instant::now());
@@ -400,17 +405,53 @@ fn toggle_main_window(app: &AppHandle) {
           return;
         }
 
-        position_main_window(&window);
-        let _ = window.show();
-        let _ = window.set_focus();
-        let _ = window.emit("calendar-shown", ());
+        show_main_window(app);
       }
     }
   }
 }
 
 fn position_main_window(window: &WebviewWindow) {
+  #[cfg(target_os = "macos")]
+  if position_window_below_tray(window) {
+    return;
+  }
   position_window_bottom_right(window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
+}
+
+#[cfg(target_os = "macos")]
+fn position_window_below_tray(window: &WebviewWindow) -> bool {
+  let Some(tray) = window.app_handle().tray_by_id("calendar-tray") else { return false; };
+  let Ok(Some(rect)) = tray.rect() else { return false; };
+  // Tauri tray rectangles use physical desktop coordinates, including on Retina displays.
+  let scale = window.scale_factor().unwrap_or(1.0);
+  let origin = rect.position.to_physical::<f64>(scale);
+  let size = rect.size.to_physical::<f64>(scale);
+  let Ok(Some(monitor)) = window.monitor_from_point(origin.x + size.width / 2.0, origin.y + size.height / 2.0) else {
+    return false;
+  };
+  let Ok(window_size) = window.outer_size() else { return false; };
+  let area = monitor.work_area();
+  let (x, y) = tray_position::below_tray(
+    (origin.x, origin.y, size.width, size.height),
+    (window_size.width as f64 / scale * monitor.scale_factor(), window_size.height as f64 / scale * monitor.scale_factor()),
+    (area.position.x as f64, area.position.y as f64, area.size.width as f64, area.size.height as f64),
+    6.0 * monitor.scale_factor(),
+  );
+  window.set_position(Position::Physical(PhysicalPosition::new(x, y))).is_ok()
+}
+
+fn update_date_icon(app: &AppHandle) {
+  let now = Local::now();
+  if let Ok(icon) = date_icon::for_day(now.day()) {
+    if let Some(tray) = app.tray_by_id("calendar-tray") {
+      let _ = tray.set_icon(Some(icon.clone()));
+      let _ = tray.set_tooltip(Some(format!("日历 · {}", now.format("%Y-%m-%d"))));
+    }
+    if let Some(window) = app.get_webview_window("main") {
+      let _ = window.set_icon(icon);
+    }
+  }
 }
 
 fn record_main_window_hidden_at(app: &AppHandle) {
@@ -454,6 +495,7 @@ fn start_clock_broadcast(app: AppHandle) {
         || next.time_zone != last.time_zone
       {
         last = next.clone();
+        update_date_icon(&app);
         let _ = app.emit("clock-changed", next);
       }
     }
