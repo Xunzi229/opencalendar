@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
+const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 const pkg = JSON.parse(read('package.json'))
 const lock = JSON.parse(read('package-lock.json'))
 const tauri = JSON.parse(read('src-tauri/tauri.conf.json'))
