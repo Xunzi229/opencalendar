@@ -10,7 +10,7 @@
 | 系统 | 架构 | 安装包 |
 | --- | --- | --- |
 | macOS | Apple Silicon / ARM64 | 文件名含 `aarch64` 的 `.dmg` 或 `.app.tar.gz` |
-| macOS | Intel / x64 | 文件名含 `x64` 的 `.dmg`，或 `x86_64` 的 `.app.tar.gz` |
+| macOS | Intel / x64 | 文件名含 `x64` 的 `.dmg` 或 `.app.tar.gz` |
 | Windows | Intel / AMD x64 | 文件名含 `x64` 的 `.exe` 或 `.msi` |
 | Windows | ARM64 | 文件名含 `arm64` 的 `.exe` |
 | Linux | x64 | `amd64` / `x86_64` 的 `.deb`、`.rpm` 或 `.AppImage` |
