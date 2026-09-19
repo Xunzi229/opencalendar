@@ -22,8 +22,8 @@ use tauri::{
 
 const CLOCK_POLL_INTERVAL_SECONDS: u64 = 30;
 const WINDOW_MARGIN: i32 = 12;
-const DEFAULT_WINDOW_WIDTH: i32 = 760;
-const DEFAULT_WINDOW_HEIGHT: i32 = 560;
+const DEFAULT_WINDOW_WIDTH: i32 = 420;
+const DEFAULT_WINDOW_HEIGHT: i32 = 540;
 const SETTINGS_WINDOW_WIDTH: i32 = 420;
 const SETTINGS_WINDOW_HEIGHT: i32 = 360;
 const FOCUS_HIDE_DELAY_MILLIS: u64 = 350;
@@ -145,7 +145,7 @@ fn close_current_window(window: WebviewWindow) -> Result<(), String> {
 
 #[tauri::command]
 fn report_calendar_size(window: WebviewWindow, width: f64, height: f64) -> Result<(), String> {
-  let next_width = width.max(720.0);
+  let next_width = width.max(380.0);
   let next_height = height.max(360.0);
   window
     .set_size(Size::Logical(LogicalSize::new(next_width, next_height)))

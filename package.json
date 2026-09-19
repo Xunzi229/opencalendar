@@ -1,6 +1,6 @@
 {
   "name": "calendar",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A desktop Chinese calendar app built with Tauri + React + TypeScript.",
   "private": true,
   "scripts": {

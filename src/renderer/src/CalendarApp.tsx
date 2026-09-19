@@ -722,31 +722,18 @@ export function CalendarApp(): React.ReactElement {
             )}
           </div>
           <details className="holiday-source">
-            <summary>假期数据来源与更新</summary>
-            <p>
-              中国大陆放假与调休安排，每天最多检查一次；失败后次日再检查，离线时使用已保存数据。
-            </p>
+            <summary>数据来源</summary>
             <p>
               {holidayData.years[viewYear]
-                ? '来源：lanceliao/china-holiday-calender（第三方整理，附政府通知链接）'
+                ? '节假日数据：开源节假日库'
                 : availableYears[viewYear]
-                  ? '来源：应用内置的 2026 年放假安排'
-                  : '当前年份暂无可用安排，不推测休息日或补班日。'}
+                  ? '节假日数据：内置放假安排'
+                  : '当前年份暂无放假安排'}
             </p>
-            {(availableYears[viewYear]?.[0]?.sourceUrl ||
-              viewYear === 2026) && (
-              <p>
-                通知原文：
-                <span className="source-url">
-                  {availableYears[viewYear]?.[0]?.sourceUrl ||
-                    'https://www.gov.cn/zhengce/content/202511/content_7047090.htm'}
-                </span>
-              </p>
-            )}
             {holidayData.checkedAt && (
               <p>
-                最近检查：
-                {new Date(holidayData.checkedAt).toLocaleString('zh-CN')}
+                检查时间：
+                {new Date(holidayData.checkedAt).toLocaleDateString('zh-CN')}
               </p>
             )}
           </details>

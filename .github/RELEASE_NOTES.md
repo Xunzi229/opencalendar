@@ -1,22 +1,19 @@
 ## 更新内容
 
-- 全新 macOS 风格日历图标，同步应用内标识与各平台安装包。
-- 假期倒计时始终以今天为基准，浏览其他日期或年份不再改变倒计时。
-- 中国大陆节假日数据每天最多联网检查一次，保存本地缓存，断网或更新失败时继续查看已有数据。
-- 标注第三方整理来源、政府通知地址与更新时间；未收录年份明确提示，不推测调休安排。
-- 日期详情区分放假和调休补班，历史年度假期支持快速跳转。
-- 新增缓存、限频、异常数据和跨年回归测试，共 15 项测试通过。
+- 日历默认宽度缩小至 420，支持最小 380 宽度，高度随内容自适应。
+- 收紧工具栏、日期格和面板留白，保留农历与休班标记。
+- 精简数据来源说明，仅保留简短来源与检查日期。
 
 ## 下载选择
 
 | 系统 | 架构 | 安装包 |
 | --- | --- | --- |
-| macOS | Apple Silicon / ARM64 | `Calendar_0.2.0_macOS_aarch64.dmg` / `.app.tar.gz` |
-| macOS | Intel / x64 | `Calendar_0.2.0_macOS_x64.dmg` / `.app.tar.gz` |
-| Windows | Intel / AMD x64 | `Calendar_0.2.0_Windows_x64-setup.exe` / `.msi`（安装版）；`Calendar_0.2.0_Windows_x64.exe`（免安装） |
-| Windows | ARM64 | `Calendar_0.2.0_Windows_arm64-setup.exe`（安装版）；`Calendar_0.2.0_Windows_arm64.exe`（免安装） |
-| Linux | x64 | `Calendar_0.2.0_Linux_amd64.deb` / `.AppImage`，`Calendar_0.2.0_Linux_x86_64.rpm` |
-| Linux | ARM64 | `Calendar_0.2.0_Linux_arm64.deb`，`Calendar_0.2.0_Linux_aarch64.rpm` / `.AppImage` |
+| macOS | Apple Silicon / ARM64 | `Calendar_0.2.1_macOS_aarch64.dmg` / `.app.tar.gz` |
+| macOS | Intel / x64 | `Calendar_0.2.1_macOS_x64.dmg` / `.app.tar.gz` |
+| Windows | Intel / AMD x64 | `Calendar_0.2.1_Windows_x64-setup.exe` / `.msi`（安装版）；`Calendar_0.2.1_Windows_x64.exe`（免安装） |
+| Windows | ARM64 | `Calendar_0.2.1_Windows_arm64-setup.exe`（安装版）；`Calendar_0.2.1_Windows_arm64.exe`（免安装） |
+| Linux | x64 | `Calendar_0.2.1_Linux_amd64.deb` / `.AppImage`，`Calendar_0.2.1_Linux_x86_64.rpm` |
+| Linux | ARM64 | `Calendar_0.2.1_Linux_arm64.deb`，`Calendar_0.2.1_Linux_aarch64.rpm` / `.AppImage` |
 
 `SHA256SUMS.txt` 提供所有安装包的 SHA-256 校验值。
 
