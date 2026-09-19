@@ -169,6 +169,6 @@ jobs:
           mkdir assets
           gh release download "$RELEASE_TAG" --dir assets
           cd assets
-          sha256sum -- * > SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\0' | sort -z | xargs -0 sha256sum -- > SHA256SUMS.txt
           gh release upload "$RELEASE_TAG" SHA256SUMS.txt --clobber
           gh release edit "$RELEASE_TAG" --draft=false

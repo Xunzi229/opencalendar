@@ -41,6 +41,7 @@ interface HolidayRange {
   startDate: string
   endDate: string
   workdays?: string[]
+  sourceUrl?: string
 }
 
 const text = {
@@ -272,10 +273,13 @@ function eachDate(startDate: string, endDate: string): string[] {
   return dates
 }
 
-function buildHolidayMap(year: number): Record<string, HolidayInfo> {
+function buildHolidayMap(
+  year: number,
+  ranges: HolidayRange[] = holidayRangesByYear[year] ?? [],
+): Record<string, HolidayInfo> {
   const result: Record<string, HolidayInfo> = {}
 
-  for (const range of holidayRangesByYear[year] ?? []) {
+  for (const range of ranges) {
     for (const date of eachDate(range.startDate, range.endDate)) {
       result[date] = {
         holidayKey: range.key,
@@ -301,12 +305,19 @@ function buildHolidayMap(year: number): Record<string, HolidayInfo> {
 function getHolidayRange(
   year: number,
   key: HolidayKey,
+  ranges: HolidayRange[] = holidayRangesByYear[year] ?? [],
 ): HolidayRange | undefined {
   if (key === 'all') {
     return undefined
   }
 
-  return holidayRangesByYear[year]?.find((range) => range.key === key)
+  return ranges.find(
+    (range) =>
+      range.key === key ||
+      range.name.includes(
+        holidayOptions.find((option) => option.key === key)?.label ?? '不匹配',
+      ),
+  )
 }
 
 function getDisplayText(
@@ -357,7 +368,7 @@ function buildMonthDays(
 }
 
 function getCountdown(
-  selectedDate: Date,
+  baseDate: Date,
   holidayMap: Record<string, HolidayInfo>,
 ): { name: string; days: number } | null {
   const candidates = Object.entries(holidayMap)
@@ -366,7 +377,7 @@ function getCountdown(
       date: parseDate(date),
       name: info.name,
     }))
-    .filter((item) => item.date >= parseDate(formatDate(selectedDate)))
+    .filter((item) => item.date >= parseDate(formatDate(baseDate)))
     .sort((left, right) => left.date.getTime() - right.date.getTime())
 
   const next = candidates[0]
@@ -381,11 +392,7 @@ function getCountdown(
       next.date.getMonth(),
       next.date.getDate(),
     ) -
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-    )
+    Date.UTC(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate())
 
   return {
     name: `${next.date.getFullYear()}${text.year}${next.name}`,
@@ -413,8 +420,9 @@ function toClockDate(snapshot: ClockSnapshot): Date {
   return new Date(snapshot.iso)
 }
 
-export type { CalendarDay, HolidayKey }
+export type { CalendarDay, HolidayKey, HolidayRange }
 export {
+  holidayRangesByYear,
   text,
   weekDays,
   monthOptions,

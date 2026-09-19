@@ -80,15 +80,11 @@ button:disabled {
   font-weight: 600;
 }
 .app-mark {
-  display: grid;
-  place-items: center;
-  width: 23px;
-  height: 23px;
-  border-radius: 6px;
-  background: var(--calendar-red);
-  color: #fff;
-  font-size: 12px;
-  box-shadow: 0 1px 3px #0000000c;
+  display: block;
+  width: 29px;
+  height: 29px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .window-subtitle {
   color: var(--calendar-muted-text);
@@ -636,3 +632,26 @@ h1 > small {
     transition: none;
   }
 }
+
+.holiday-data-status {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 0 28px 10px;
+  color: var(--calendar-muted-text);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.holiday-source {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--calendar-border);
+  color: var(--calendar-muted-text);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.holiday-source summary { cursor: pointer; width: fit-content; }
+.holiday-source summary:focus-visible { outline: 2px solid var(--calendar-blue); outline-offset: 3px; }
+.holiday-source p { margin: 6px 0 0; }
+.source-url { overflow-wrap: anywhere; user-select: text; }

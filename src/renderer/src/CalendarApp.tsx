@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { desktopApi } from './api/desktop'
+import { holidaySync } from './holidaySync'
 import type { AlmanacRecord } from '../../shared/almanac/types'
 import type { ClockSnapshot } from '../../shared/clock/types'
 
 import {
   text,
+  holidayRangesByYear,
   weekDays,
   monthOptions,
   currentYear,
@@ -29,6 +31,8 @@ import type { CalendarDay, HolidayKey } from './calendar'
 export function CalendarApp(): React.ReactElement {
   const calendarWindowRef = useRef<HTMLElement | null>(null)
   const lastClockSnapshotRef = useRef<ClockSnapshot | null>(null)
+  const [holidayData, setHolidayData] = useState(() => holidaySync.read())
+  const [checkingHolidays, setCheckingHolidays] = useState(false)
   const [now, setNow] = useState(() => new Date())
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth() + 1)
@@ -46,13 +50,40 @@ export function CalendarApp(): React.ReactElement {
   const [almanacRevision, setAlmanacRevision] = useState(0)
   const previousTodayKeyRef = useRef(formatDate(now))
 
+  const availableYears = useMemo(
+    () => ({ ...holidayRangesByYear, ...holidayData.years }),
+    [holidayData.years],
+  )
+  const todayKey = formatDate(now)
+  useEffect(() => {
+    let active = true
+    const check = () => {
+      if (document.visibilityState === 'hidden') return
+      setCheckingHolidays(true)
+      void holidaySync.check().then((data) => {
+        if (active) {
+          setHolidayData({ ...data })
+          setCheckingHolidays(false)
+        }
+      })
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    const unsubscribe = desktopApi.onCalendarShown(check)
+    return () => {
+      active = false
+      document.removeEventListener('visibilitychange', check)
+      unsubscribe()
+    }
+  }, [todayKey])
+
   const holidayMap = useMemo(
     () => ({
-      ...buildHolidayMap(viewYear - 1),
-      ...buildHolidayMap(viewYear),
-      ...buildHolidayMap(viewYear + 1),
+      ...buildHolidayMap(viewYear - 1, availableYears[viewYear - 1]),
+      ...buildHolidayMap(viewYear, availableYears[viewYear]),
+      ...buildHolidayMap(viewYear + 1, availableYears[viewYear + 1]),
     }),
-    [viewYear],
+    [viewYear, availableYears],
   )
   const days = useMemo(
     () => buildMonthDays(viewYear, viewMonth, holidayMap, now),
@@ -60,16 +91,31 @@ export function CalendarApp(): React.ReactElement {
   )
   const selectedHolidayMap = useMemo(
     () => ({
-      ...buildHolidayMap(selectedDate.getFullYear()),
-      ...buildHolidayMap(selectedDate.getFullYear() + 1),
+      ...buildHolidayMap(
+        selectedDate.getFullYear(),
+        availableYears[selectedDate.getFullYear()],
+      ),
+      ...buildHolidayMap(
+        selectedDate.getFullYear() + 1,
+        availableYears[selectedDate.getFullYear() + 1],
+      ),
     }),
-    [selectedDate],
+    [selectedDate, availableYears],
   )
   const selectedText = getDisplayText(selectedDate, selectedHolidayMap)
   const selectedLunar = getLunarDate(selectedDate)
+  const selectedSchedule = selectedHolidayMap[formatDate(selectedDate)]
+  const todayYear = now.getFullYear()
+  const upcomingHolidayMap = useMemo(
+    () => ({
+      ...buildHolidayMap(todayYear, availableYears[todayYear]),
+      ...buildHolidayMap(todayYear + 1, availableYears[todayYear + 1]),
+    }),
+    [todayYear, availableYears],
+  )
   const countdown = useMemo(
-    () => getCountdown(selectedDate, selectedHolidayMap),
-    [selectedDate, selectedHolidayMap],
+    () => getCountdown(now, upcomingHolidayMap),
+    [now, upcomingHolidayMap],
   )
   const visibleYears = useMemo(
     () => buildYearWindow(yearWindow.start, yearWindow.end),
@@ -243,7 +289,7 @@ export function CalendarApp(): React.ReactElement {
   }, [now, viewMonth, viewYear])
 
   function jumpToHoliday(year: number, key: HolidayKey): boolean {
-    const range = getHolidayRange(year, key)
+    const range = getHolidayRange(year, key, availableYears[year])
 
     if (!range) {
       return false
@@ -355,9 +401,12 @@ export function CalendarApp(): React.ReactElement {
       <section ref={calendarWindowRef} className="calendar-window">
         <div className="window-heading">
           <div>
-            <span className="app-mark" aria-hidden="true">
-              日
-            </span>
+            <img
+              className="app-mark"
+              src="./calendar-icon.svg"
+              alt=""
+              aria-hidden="true"
+            />
             <span>日历</span>
           </div>
           <span className="window-subtitle">农历 · 节假日</span>
@@ -390,7 +439,11 @@ export function CalendarApp(): React.ReactElement {
                   {holidayOptions.map((option) => {
                     const disabled =
                       option.key !== 'all' &&
-                      !getHolidayRange(viewYear, option.key)
+                      !getHolidayRange(
+                        viewYear,
+                        option.key,
+                        availableYears[viewYear],
+                      )
 
                     return (
                       <button
@@ -525,6 +578,25 @@ export function CalendarApp(): React.ReactElement {
             休息日
           </div>
         </div>
+        <div className="holiday-data-status" role="status">
+          <span>
+            {availableYears[viewYear]?.length
+              ? `${viewYear} 年放假安排已收录`
+              : `${viewYear} 年放假安排待公布 / 暂未收录`}
+          </span>
+          <span>
+            {checkingHolidays
+              ? '正在检查更新…'
+              : holidayData.status === 'offline'
+                ? '更新未成功，继续使用已有数据'
+                : holidayData.updatedAt
+                  ? `最近更新 ${new Date(holidayData.updatedAt).toLocaleDateString('zh-CN')}`
+                  : '使用内置数据'}
+          </span>
+          {!holidayData.persisted && (
+            <span>本地缓存不可写，退出后无法保存更新</span>
+          )}
+        </div>
         <div className="calendar-body">
           <div className="week-grid">
             {weekDays.map((day, index) => (
@@ -587,9 +659,15 @@ export function CalendarApp(): React.ReactElement {
               </span>
             </span>
             <span className="summary-festival">
-              {selectedText !== selectedLunar.label
-                ? selectedText
-                : '慢慢来，过好每一天'}
+              {selectedSchedule?.kind === 'holiday'
+                ? `${selectedSchedule.name} · 放假`
+                : selectedSchedule?.kind === 'workday'
+                  ? '调休补班'
+                  : selectedText !== selectedLunar.label
+                    ? selectedText
+                    : availableYears[selectedDate.getFullYear()]?.length
+                      ? '无特别放假或调休安排'
+                      : '放假安排待公布 / 暂未收录'}
             </span>
           </div>
           {almanacRecord && (
@@ -626,15 +704,15 @@ export function CalendarApp(): React.ReactElement {
               </article>
             </>
           )}
-          <div className="countdown-line">
+          <div className="countdown-line" aria-label="以今天为基准的假期倒计时">
             <span className="countdown-dot" aria-hidden="true" />
             {countdown ? (
               <>
                 {countdown.days === 0 ? (
-                  `${countdown.name} · 假期中`
+                  `${countdown.name} · 今天是假期`
                 ) : (
                   <>
-                    {text.distance} {countdown.name}{' '}
+                    {text.distance} {countdown.name} {text.remains}{' '}
                     <strong>{countdown.days}</strong> {text.days}
                   </>
                 )}
@@ -643,6 +721,35 @@ export function CalendarApp(): React.ReactElement {
               '暂无后续假期安排'
             )}
           </div>
+          <details className="holiday-source">
+            <summary>假期数据来源与更新</summary>
+            <p>
+              中国大陆放假与调休安排，每天最多检查一次；失败后次日再检查，离线时使用已保存数据。
+            </p>
+            <p>
+              {holidayData.years[viewYear]
+                ? '来源：lanceliao/china-holiday-calender（第三方整理，附政府通知链接）'
+                : availableYears[viewYear]
+                  ? '来源：应用内置的 2026 年放假安排'
+                  : '当前年份暂无可用安排，不推测休息日或补班日。'}
+            </p>
+            {(availableYears[viewYear]?.[0]?.sourceUrl ||
+              viewYear === 2026) && (
+              <p>
+                通知原文：
+                <span className="source-url">
+                  {availableYears[viewYear]?.[0]?.sourceUrl ||
+                    'https://www.gov.cn/zhengce/content/202511/content_7047090.htm'}
+                </span>
+              </p>
+            )}
+            {holidayData.checkedAt && (
+              <p>
+                最近检查：
+                {new Date(holidayData.checkedAt).toLocaleString('zh-CN')}
+              </p>
+            )}
+          </details>
         </footer>
       </section>
     </main>

@@ -1,11 +1,12 @@
 {
   "name": "calendar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A desktop Chinese calendar app built with Tauri + React + TypeScript.",
   "private": true,
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "tauri:dev": "tauri dev",
+    "icons": "node scripts/generate-icons.mjs",
     "build": "vite build",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
