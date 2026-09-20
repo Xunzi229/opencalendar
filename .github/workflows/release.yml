@@ -141,6 +141,11 @@ jobs:
           workspaces: src-tauri -> target
           key: ${{ matrix.target }}
       - run: npm ci
+      - name: Test native positioning and date icons
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: |
+          npm run build
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --target aarch64-apple-darwin
       - name: Build and upload release installers
         uses: tauri-apps/tauri-action@v0
         env:
