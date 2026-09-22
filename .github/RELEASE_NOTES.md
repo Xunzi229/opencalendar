@@ -1,18 +1,19 @@
 ## 更新内容
 
-- macOS 日历弹窗显示在当前应用窗口之上，不再只出现在桌面空间。
-- 日历窗口四个角改为 16px 圆弧。
+- macOS 以菜单栏应用启动，日历弹窗可盖在当前前台应用之上。
+- 点击别处或切换窗口时自动隐藏，且不再闪一下。
+- 首次安装后也能正确定位到托盘图标正下方，不再偶尔贴到屏幕最右侧。
 
 ## 下载选择
 
 | 系统 | 架构 | 安装包 |
 | --- | --- | --- |
-| macOS | Apple Silicon / ARM64 | `Calendar_0.2.3_macOS_aarch64.dmg` / `.app.tar.gz` |
-| macOS | Intel / x64 | `Calendar_0.2.3_macOS_x64.dmg` / `.app.tar.gz` |
-| Windows | Intel / AMD x64 | `Calendar_0.2.3_Windows_x64-setup.exe` / `.msi`（安装版）；`Calendar_0.2.3_Windows_x64.exe`（免安装） |
-| Windows | ARM64 | `Calendar_0.2.3_Windows_arm64-setup.exe`（安装版）；`Calendar_0.2.3_Windows_arm64.exe`（免安装） |
-| Linux | x64 | `Calendar_0.2.3_Linux_amd64.deb` / `.AppImage`，`Calendar_0.2.3_Linux_x86_64.rpm` |
-| Linux | ARM64 | `Calendar_0.2.3_Linux_arm64.deb`，`Calendar_0.2.3_Linux_aarch64.rpm` / `.AppImage` |
+| macOS | Apple Silicon / ARM64 | `Calendar_0.2.4_macOS_aarch64.dmg` / `.app.tar.gz` |
+| macOS | Intel / x64 | `Calendar_0.2.4_macOS_x64.dmg` / `.app.tar.gz` |
+| Windows | Intel / AMD x64 | `Calendar_0.2.4_Windows_x64-setup.exe` / `.msi`（安装版）；`Calendar_0.2.4_Windows_x64.exe`（免安装） |
+| Windows | ARM64 | `Calendar_0.2.4_Windows_arm64-setup.exe`（安装版）；`Calendar_0.2.4_Windows_arm64.exe`（免安装） |
+| Linux | x64 | `Calendar_0.2.4_Linux_amd64.deb` / `.AppImage`，`Calendar_0.2.4_Linux_x86_64.rpm` |
+| Linux | ARM64 | `Calendar_0.2.4_Linux_arm64.deb`，`Calendar_0.2.4_Linux_aarch64.rpm` / `.AppImage` |
 
 `SHA256SUMS.txt` 提供所有安装包的 SHA-256 校验值。
 
