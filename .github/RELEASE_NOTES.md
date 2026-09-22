@@ -1,19 +1,18 @@
 ## 更新内容
 
-- 修复 macOS 日历弹窗定位，改为跟随菜单栏图标下方，支持屏幕边缘避让和缩放。
-- 托盘与应用内图标显示当天日期，跨天自动刷新，打开日历时立即更新。
-- 新增 31 天日期图标资源及原生定位、图标解码测试。
+- macOS 日历弹窗显示在当前应用窗口之上，不再只出现在桌面空间。
+- 日历窗口四个角改为 16px 圆弧。
 
 ## 下载选择
 
 | 系统 | 架构 | 安装包 |
 | --- | --- | --- |
-| macOS | Apple Silicon / ARM64 | `Calendar_0.2.2_macOS_aarch64.dmg` / `.app.tar.gz` |
-| macOS | Intel / x64 | `Calendar_0.2.2_macOS_x64.dmg` / `.app.tar.gz` |
-| Windows | Intel / AMD x64 | `Calendar_0.2.2_Windows_x64-setup.exe` / `.msi`（安装版）；`Calendar_0.2.2_Windows_x64.exe`（免安装） |
-| Windows | ARM64 | `Calendar_0.2.2_Windows_arm64-setup.exe`（安装版）；`Calendar_0.2.2_Windows_arm64.exe`（免安装） |
-| Linux | x64 | `Calendar_0.2.2_Linux_amd64.deb` / `.AppImage`，`Calendar_0.2.2_Linux_x86_64.rpm` |
-| Linux | ARM64 | `Calendar_0.2.2_Linux_arm64.deb`，`Calendar_0.2.2_Linux_aarch64.rpm` / `.AppImage` |
+| macOS | Apple Silicon / ARM64 | `Calendar_0.2.3_macOS_aarch64.dmg` / `.app.tar.gz` |
+| macOS | Intel / x64 | `Calendar_0.2.3_macOS_x64.dmg` / `.app.tar.gz` |
+| Windows | Intel / AMD x64 | `Calendar_0.2.3_Windows_x64-setup.exe` / `.msi`（安装版）；`Calendar_0.2.3_Windows_x64.exe`（免安装） |
+| Windows | ARM64 | `Calendar_0.2.3_Windows_arm64-setup.exe`（安装版）；`Calendar_0.2.3_Windows_arm64.exe`（免安装） |
+| Linux | x64 | `Calendar_0.2.3_Linux_amd64.deb` / `.AppImage`，`Calendar_0.2.3_Linux_x86_64.rpm` |
+| Linux | ARM64 | `Calendar_0.2.3_Linux_arm64.deb`，`Calendar_0.2.3_Linux_aarch64.rpm` / `.AppImage` |
 
 `SHA256SUMS.txt` 提供所有安装包的 SHA-256 校验值。
 
