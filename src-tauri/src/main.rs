@@ -342,8 +342,10 @@ fn show_main_window(app: &AppHandle) {
     }
 
     position_main_window(&window);
+    present_above_apps(&window);
     let _ = window.show();
     let _ = window.set_focus();
+    present_above_apps(&window);
     let _ = window.emit("calendar-shown", ());
   }
 }
@@ -358,8 +360,10 @@ fn hide_main_window(app: &AppHandle) {
 fn open_settings_window(app: &AppHandle) {
   if let Some(window) = app.get_webview_window("settings") {
     position_window_bottom_right(&window, SETTINGS_WINDOW_WIDTH, SETTINGS_WINDOW_HEIGHT);
+    present_above_apps(&window);
     let _ = window.show();
     let _ = window.set_focus();
+    present_above_apps(&window);
     return;
   }
 
@@ -374,13 +378,16 @@ fn open_settings_window(app: &AppHandle) {
   .minimizable(false)
   .maximizable(false)
   .always_on_top(true)
+  .visible_on_all_workspaces(true)
   .skip_taskbar(true)
   .visible(false);
 
   if let Ok(window) = builder.build() {
     position_window_bottom_right(&window, SETTINGS_WINDOW_WIDTH, SETTINGS_WINDOW_HEIGHT);
+    present_above_apps(&window);
     let _ = window.show();
     let _ = window.set_focus();
+    present_above_apps(&window);
   }
 }
 
@@ -408,6 +415,76 @@ fn toggle_main_window(app: &AppHandle) {
         show_main_window(app);
       }
     }
+  }
+}
+
+fn present_above_apps(window: &WebviewWindow) {
+  #[cfg(target_os = "macos")]
+  {
+    let Ok(ptr) = window.ns_window() else {
+      return;
+    };
+    let Some(ns_window) =
+      (unsafe { objc2::rc::Retained::retain(ptr.cast::<objc2_app_kit::NSWindow>()) })
+    else {
+      return;
+    };
+
+    // 普通浮动层仍属于桌面窗口层级，前台应用会把它压在后面。
+    // 提到弹出菜单层，并允许加入当前 Space（含全屏应用）。
+    ns_window.setLevel(objc2_app_kit::NSPopUpMenuWindowLevel);
+    ns_window.setHidesOnDeactivate(false);
+    ns_window.setCollectionBehavior(
+      objc2_app_kit::NSWindowCollectionBehavior::CanJoinAllSpaces
+        | objc2_app_kit::NSWindowCollectionBehavior::FullScreenAuxiliary
+        | objc2_app_kit::NSWindowCollectionBehavior::Transient
+        | objc2_app_kit::NSWindowCollectionBehavior::IgnoresCycle,
+    );
+    round_window_corners(&ns_window);
+    ns_window.orderFrontRegardless();
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  {
+    let _ = window;
+  }
+}
+
+#[cfg(target_os = "macos")]
+fn round_window_corners(ns_window: &objc2_app_kit::NSWindow) {
+  const CORNER_RADIUS: f64 = 16.0;
+
+  ns_window.setOpaque(false);
+  ns_window.setBackgroundColor(Some(&objc2_app_kit::NSColor::clearColor()));
+  ns_window.setHasShadow(true);
+
+  let Some(content) = ns_window.contentView() else {
+    return;
+  };
+  round_view(&content, CORNER_RADIUS);
+  let subviews = content.subviews();
+  for index in 0..subviews.count() {
+    round_view(&subviews.objectAtIndex(index), CORNER_RADIUS);
+  }
+  ns_window.invalidateShadow();
+}
+
+#[cfg(target_os = "macos")]
+fn round_view(view: &objc2_app_kit::NSView, radius: f64) {
+  view.setWantsLayer(true);
+  if let Some(layer) = view.layer() {
+    layer.setCornerRadius(radius);
+    layer.setMasksToBounds(true);
+  }
+
+  if !view.class().name().to_bytes().windows(9).any(|name| name == b"WKWebView") {
+    return;
+  }
+
+  let key = objc2_foundation::NSString::from_str("drawsBackground");
+  let no = objc2_foundation::NSNumber::numberWithBool(false);
+  unsafe {
+    let _: () = objc2::msg_send![view, setValue: &*no, forKey: &*key];
   }
 }
 

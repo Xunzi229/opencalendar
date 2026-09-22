@@ -60,10 +60,20 @@ button:disabled {
 .app-shell {
   width: 100%;
 }
+[data-runtime='desktop'] {
+  background: transparent;
+}
+[data-runtime='desktop'] body,
+[data-runtime='desktop'] #root,
+[data-runtime='desktop'] .app-shell {
+  background: transparent;
+}
 .calendar-window {
   width: 100%;
   background: var(--calendar-surface);
   border: 1px solid var(--calendar-border);
+  border-radius: 16px;
+  overflow: hidden;
 }
 .window-heading {
   display: flex;
