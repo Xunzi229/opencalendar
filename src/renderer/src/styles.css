@@ -239,51 +239,11 @@ button:disabled {
 .chevron-left {
   transform: rotate(-135deg);
 }
-.month-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px 8px;
-}
-h1 {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-  margin: 0;
-  font-size: 26px;
-  line-height: 1.2;
-  font-weight: 650;
-  letter-spacing: -1.3px;
-}
-h1 > span {
-  font-size: 17px;
-  font-weight: 500;
-}
-h1 > small {
-  margin-left: 8px;
-  color: var(--calendar-muted-text);
-  font-size: 18px;
-  font-weight: 350;
-  letter-spacing: -0.5px;
-}
-.calendar-legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--calendar-muted-text);
-  font-size: 11px;
-}
-.legend-today,
-.legend-rest,
 .countdown-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--calendar-blue);
-}
-.legend-rest {
-  background: var(--calendar-red);
-  margin-left: 10px;
 }
 .calendar-body {
   padding: 0 10px 10px;
@@ -592,16 +552,6 @@ h1 > small {
   }
 }
 
-.holiday-data-status {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  padding: 0 16px 6px;
-  color: var(--calendar-muted-text);
-  font-size: 11px;
-  line-height: 1.6;
-}
 .holiday-source {
   margin-top: 8px;
   padding-top: 7px;

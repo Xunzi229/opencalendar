@@ -32,7 +32,6 @@ export function CalendarApp(): React.ReactElement {
   const calendarWindowRef = useRef<HTMLElement | null>(null)
   const lastClockSnapshotRef = useRef<ClockSnapshot | null>(null)
   const [holidayData, setHolidayData] = useState(() => holidaySync.read())
-  const [checkingHolidays, setCheckingHolidays] = useState(false)
   const [now, setNow] = useState(() => new Date())
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth() + 1)
@@ -59,11 +58,9 @@ export function CalendarApp(): React.ReactElement {
     let active = true
     const check = () => {
       if (document.visibilityState === 'hidden') return
-      setCheckingHolidays(true)
       void holidaySync.check().then((data) => {
         if (active) {
           setHolidayData({ ...data })
-          setCheckingHolidays(false)
         }
       })
     }
@@ -478,7 +475,13 @@ export function CalendarApp(): React.ReactElement {
                 aria-label={text.year}
                 className="control year-picker-button"
                 onClick={() => {
-                  setYearMenuOpen((open) => !open)
+                  setYearMenuOpen((open) => {
+                    if (!open) {
+                      const year = now.getFullYear()
+                      setYearWindow({ start: year - 4, end: year + 6 })
+                    }
+                    return !open
+                  })
                   setMonthMenuOpen(false)
                   setHolidayMenuOpen(false)
                 }}
@@ -565,38 +568,6 @@ export function CalendarApp(): React.ReactElement {
 
         {statusMessage && <div className="status-strip">{statusMessage}</div>}
 
-        <div className="month-heading">
-          <h1>
-            {viewMonth}
-            <span>月</span>
-            <small>{viewYear}</small>
-          </h1>
-          <div className="calendar-legend">
-            <span className="legend-today" />
-            今天
-            <span className="legend-rest" />
-            休息日
-          </div>
-        </div>
-        <div className="holiday-data-status" role="status">
-          <span>
-            {availableYears[viewYear]?.length
-              ? `${viewYear} 年放假安排已收录`
-              : `${viewYear} 年放假安排待公布 / 暂未收录`}
-          </span>
-          <span>
-            {checkingHolidays
-              ? '正在检查更新…'
-              : holidayData.status === 'offline'
-                ? '更新未成功，继续使用已有数据'
-                : holidayData.updatedAt
-                  ? `最近更新 ${new Date(holidayData.updatedAt).toLocaleDateString('zh-CN')}`
-                  : '使用内置数据'}
-          </span>
-          {!holidayData.persisted && (
-            <span>本地缓存不可写，退出后无法保存更新</span>
-          )}
-        </div>
         <div className="calendar-body">
           <div className="week-grid">
             {weekDays.map((day, index) => (
