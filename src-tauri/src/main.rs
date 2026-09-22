@@ -17,8 +17,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use tauri::{
   menu::{Menu, MenuItem},
-  PhysicalPosition,
+  LogicalPosition,
   Position,
+  Rect,
   tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
   App, AppHandle, Emitter, LogicalSize, Manager, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
@@ -37,6 +38,8 @@ struct AppState {
   database_path: PathBuf,
   last_main_window_shown_at: Mutex<Option<Instant>>,
   last_main_window_hidden_at: Mutex<Option<Instant>>,
+  main_window_took_focus: Mutex<bool>,
+  tray_anchor: Mutex<Option<(f64, f64, f64, f64)>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -211,7 +214,8 @@ async fn get_almanac(
 }
 
 fn main() {
-  tauri::Builder::default()
+  #[allow(unused_mut)]
+  let mut app = tauri::Builder::default()
     .setup(|app| {
       let state = initialize_state(app)?;
       app.manage(Arc::new(state));
@@ -222,20 +226,38 @@ fn main() {
         let app_handle = app.handle().clone();
         let window_handle = window.clone();
         window.on_window_event(move |event| {
-          if let WindowEvent::Focused(false) = event {
-            let state = app_handle.state::<Arc<AppState>>();
-            let should_hide = state
-              .last_main_window_shown_at
-              .lock()
-              .ok()
-              .and_then(|last| *last)
-              .map(|instant| instant.elapsed() >= Duration::from_millis(FOCUS_HIDE_DELAY_MILLIS))
-              .unwrap_or(true);
-
-            if should_hide {
-              record_main_window_hidden_at(&app_handle);
-              let _ = window_handle.hide();
+          let WindowEvent::Focused(focused) = event else {
+            return;
+          };
+          let state = app_handle.state::<Arc<AppState>>();
+          if *focused {
+            if let Ok(mut took_focus) = state.main_window_took_focus.lock() {
+              *took_focus = true;
             }
+            return;
+          }
+
+          // 盖在其他应用上时窗口可能还没变成关键窗口。这时失焦是显示过程本身，不能立刻隐藏。
+          let took_focus = state
+            .main_window_took_focus
+            .lock()
+            .map(|flag| *flag)
+            .unwrap_or(true);
+          if !took_focus {
+            return;
+          }
+
+          let should_hide = state
+            .last_main_window_shown_at
+            .lock()
+            .ok()
+            .and_then(|last| *last)
+            .map(|instant| instant.elapsed() >= Duration::from_millis(FOCUS_HIDE_DELAY_MILLIS))
+            .unwrap_or(true);
+
+          if should_hide {
+            record_main_window_hidden_at(&app_handle);
+            let _ = window_handle.hide();
           }
         });
       }
@@ -250,8 +272,15 @@ fn main() {
       report_calendar_size,
       get_almanac
     ])
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application");
+
+  // setup 时事件循环已经按普通应用启动，窗口被分到自己的桌面空间。
+  // 必须在 run 之前改成菜单栏应用，窗口才会出现在当前前台应用所在的空间。
+  #[cfg(target_os = "macos")]
+  app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+  app.run(|_, _| {});
 }
 
 fn initialize_state(app: &App) -> Result<AppState, Box<dyn std::error::Error>> {
@@ -263,6 +292,8 @@ fn initialize_state(app: &App) -> Result<AppState, Box<dyn std::error::Error>> {
     database_path: app_dir.join("calendar-cache.sqlite"),
     last_main_window_shown_at: Mutex::new(None),
     last_main_window_hidden_at: Mutex::new(None),
+    main_window_took_focus: Mutex::new(false),
+    tray_anchor: Mutex::new(None),
   };
 
   initialize_database(&state.database_path)?;
@@ -318,10 +349,11 @@ fn build_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
       if let TrayIconEvent::Click {
         button: MouseButton::Left,
         button_state: MouseButtonState::Up,
+        rect,
         ..
       } = event
       {
-        toggle_main_window(tray.app_handle());
+        toggle_main_window(tray.app_handle(), tray_anchor_from_rect(&rect));
       }
     })
     .build(app)?;
@@ -335,17 +367,20 @@ fn build_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn show_main_window(app: &AppHandle) {
-  update_date_icon(app);
   if let Some(window) = app.get_webview_window("main") {
     if let Ok(mut last_shown_at) = app.state::<Arc<AppState>>().last_main_window_shown_at.lock() {
       *last_shown_at = Some(Instant::now());
     }
+    if let Ok(mut took_focus) = app.state::<Arc<AppState>>().main_window_took_focus.lock() {
+      *took_focus = false;
+    }
 
     position_main_window(&window);
-    present_above_apps(&window);
+    update_date_icon(app);
+    prepare_popup_window(&window);
     let _ = window.show();
+    // 窗口必须成为 key window，点击别处或切换应用才会触发失焦隐藏。
     let _ = window.set_focus();
-    present_above_apps(&window);
     let _ = window.emit("calendar-shown", ());
   }
 }
@@ -360,10 +395,9 @@ fn hide_main_window(app: &AppHandle) {
 fn open_settings_window(app: &AppHandle) {
   if let Some(window) = app.get_webview_window("settings") {
     position_window_bottom_right(&window, SETTINGS_WINDOW_WIDTH, SETTINGS_WINDOW_HEIGHT);
-    present_above_apps(&window);
+    prepare_popup_window(&window);
     let _ = window.show();
     let _ = window.set_focus();
-    present_above_apps(&window);
     return;
   }
 
@@ -378,20 +412,24 @@ fn open_settings_window(app: &AppHandle) {
   .minimizable(false)
   .maximizable(false)
   .always_on_top(true)
-  .visible_on_all_workspaces(true)
   .skip_taskbar(true)
   .visible(false);
 
   if let Ok(window) = builder.build() {
     position_window_bottom_right(&window, SETTINGS_WINDOW_WIDTH, SETTINGS_WINDOW_HEIGHT);
-    present_above_apps(&window);
+    prepare_popup_window(&window);
     let _ = window.show();
     let _ = window.set_focus();
-    present_above_apps(&window);
   }
 }
 
-fn toggle_main_window(app: &AppHandle) {
+fn toggle_main_window(app: &AppHandle, anchor: Option<(f64, f64, f64, f64)>) {
+  if let Some(anchor) = anchor {
+    if let Ok(mut slot) = app.state::<Arc<AppState>>().tray_anchor.lock() {
+      *slot = Some(anchor);
+    }
+  }
+
   if let Some(window) = app.get_webview_window("main") {
     match window.is_visible() {
       Ok(true) => {
@@ -418,36 +456,54 @@ fn toggle_main_window(app: &AppHandle) {
   }
 }
 
-fn present_above_apps(window: &WebviewWindow) {
+fn prepare_popup_window(window: &WebviewWindow) {
   #[cfg(target_os = "macos")]
-  {
-    let Ok(ptr) = window.ns_window() else {
-      return;
-    };
-    let Some(ns_window) =
-      (unsafe { objc2::rc::Retained::retain(ptr.cast::<objc2_app_kit::NSWindow>()) })
-    else {
-      return;
-    };
-
-    // 普通浮动层仍属于桌面窗口层级，前台应用会把它压在后面。
-    // 提到弹出菜单层，并允许加入当前 Space（含全屏应用）。
-    ns_window.setLevel(objc2_app_kit::NSPopUpMenuWindowLevel);
-    ns_window.setHidesOnDeactivate(false);
-    ns_window.setCollectionBehavior(
-      objc2_app_kit::NSWindowCollectionBehavior::CanJoinAllSpaces
-        | objc2_app_kit::NSWindowCollectionBehavior::FullScreenAuxiliary
-        | objc2_app_kit::NSWindowCollectionBehavior::Transient
-        | objc2_app_kit::NSWindowCollectionBehavior::IgnoresCycle,
-    );
-    round_window_corners(&ns_window);
-    ns_window.orderFrontRegardless();
-  }
-
+  configure_popup_window(window);
   #[cfg(not(target_os = "macos"))]
-  {
-    let _ = window;
+  let _ = window;
+}
+
+#[cfg(target_os = "macos")]
+fn configure_popup_window(window: &WebviewWindow) {
+  let window = window.clone();
+  run_on_main(move || {
+    let Some(ns_window) = ns_window(&window) else {
+      return;
+    };
+    configure_ns_window(&ns_window);
+  });
+}
+
+#[cfg(target_os = "macos")]
+fn ns_window(window: &WebviewWindow) -> Option<objc2::rc::Retained<objc2_app_kit::NSWindow>> {
+  let ptr = window.ns_window().ok()?;
+  unsafe { objc2::rc::Retained::retain(ptr.cast::<objc2_app_kit::NSWindow>()) }
+}
+
+#[cfg(target_os = "macos")]
+fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow) {
+  // CanJoinAllSpaces 会让窗口常驻所有空间，切换空间时它先跟过去再被失焦隐藏，看起来像闪一下。
+  // 弹出时会 makeKey 并激活应用，MoveToActiveSpace 只在这一刻把窗口挪到当前空间。
+  ns_window.setLevel(objc2_app_kit::NSPopUpMenuWindowLevel);
+  ns_window.setHidesOnDeactivate(false);
+  ns_window.setCollectionBehavior(
+    objc2_app_kit::NSWindowCollectionBehavior::MoveToActiveSpace
+      | objc2_app_kit::NSWindowCollectionBehavior::CanJoinAllApplications
+      | objc2_app_kit::NSWindowCollectionBehavior::FullScreenAuxiliary,
+  );
+  round_window_corners(ns_window);
+}
+
+#[cfg(target_os = "macos")]
+fn run_on_main<F>(work: F)
+where
+  F: FnOnce() + Send + 'static,
+{
+  if objc2::MainThreadMarker::new().is_some() {
+    work();
+    return;
   }
+  dispatch2::DispatchQueue::main().exec_sync(work);
 }
 
 #[cfg(target_os = "macos")]
@@ -493,29 +549,72 @@ fn position_main_window(window: &WebviewWindow) {
   if position_window_below_tray(window) {
     return;
   }
+  // 窗口已经显示时，读不到图标位置就保持原位。落到右下角会把一次正常弹出甩到屏幕边上。
+  #[cfg(target_os = "macos")]
+  if window.is_visible().unwrap_or(false) {
+    return;
+  }
   position_window_bottom_right(window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
 }
 
 #[cfg(target_os = "macos")]
+fn monitor_containing(window: &WebviewWindow, x: f64, y: f64) -> Option<tauri::Monitor> {
+  window.available_monitors().ok()?.into_iter().find(|monitor| {
+    let position = monitor.position();
+    let size = monitor.size();
+    let left = position.x as f64;
+    let top = position.y as f64;
+    x >= left && x < left + size.width as f64 && y >= top && y < top + size.height as f64
+  })
+}
+
+#[cfg(target_os = "macos")]
+fn tray_anchor(window: &WebviewWindow) -> Option<(f64, f64, f64, f64)> {
+  if let Ok(slot) = window.app_handle().state::<Arc<AppState>>().tray_anchor.lock() {
+    if slot.is_some() {
+      return *slot;
+    }
+  }
+
+  let tray = window.app_handle().tray_by_id("calendar-tray")?;
+  tray.rect().ok().flatten().as_ref().and_then(tray_anchor_from_rect)
+}
+
+fn tray_anchor_from_rect(rect: &Rect) -> Option<(f64, f64, f64, f64)> {
+  let origin = rect.position.to_physical::<f64>(1.0);
+  let size = rect.size.to_physical::<f64>(1.0);
+  if !(1.0..400.0).contains(&size.width) || !(1.0..400.0).contains(&size.height) {
+    return None;
+  }
+  Some((origin.x, origin.y, size.width, size.height))
+}
+
+#[cfg(target_os = "macos")]
 fn position_window_below_tray(window: &WebviewWindow) -> bool {
-  let Some(tray) = window.app_handle().tray_by_id("calendar-tray") else { return false; };
-  let Ok(Some(rect)) = tray.rect() else { return false; };
-  // Tauri tray rectangles use physical desktop coordinates, including on Retina displays.
+  let Some((origin_x, origin_y, tray_width, tray_height)) = tray_anchor(window) else {
+    return false;
+  };
   let scale = window.scale_factor().unwrap_or(1.0);
-  let origin = rect.position.to_physical::<f64>(scale);
-  let size = rect.size.to_physical::<f64>(scale);
-  let Ok(Some(monitor)) = window.monitor_from_point(origin.x + size.width / 2.0, origin.y + size.height / 2.0) else {
+  // monitor_from_point 按逻辑坐标比对，托盘矩形是物理像素，Retina 上会落到屏幕外或错误的显示器。
+  let Some(monitor) = monitor_containing(window, origin_x + tray_width / 2.0, origin_y + tray_height / 2.0) else {
     return false;
   };
   let Ok(window_size) = window.outer_size() else { return false; };
   let area = monitor.work_area();
   let (x, y) = tray_position::below_tray(
-    (origin.x, origin.y, size.width, size.height),
+    (origin_x, origin_y, tray_width, tray_height),
     (window_size.width as f64 / scale * monitor.scale_factor(), window_size.height as f64 / scale * monitor.scale_factor()),
     (area.position.x as f64, area.position.y as f64, area.size.width as f64, area.size.height as f64),
     6.0 * monitor.scale_factor(),
   );
-  window.set_position(Position::Physical(PhysicalPosition::new(x, y))).is_ok()
+  // 窗口首次显示前 scale_factor 是 1，按物理坐标设置会被换算错。用显示器缩放转成逻辑坐标。
+  let monitor_scale = monitor.scale_factor();
+  window
+    .set_position(Position::Logical(LogicalPosition::new(
+      x as f64 / monitor_scale,
+      y as f64 / monitor_scale,
+    )))
+    .is_ok()
 }
 
 fn update_date_icon(app: &AppHandle) {
@@ -542,19 +641,26 @@ fn position_window_bottom_right(window: &WebviewWindow, fallback_width: i32, fal
     return;
   };
 
+  // 全部换成显示器的逻辑坐标，避开窗口首次显示前 scale_factor 为 1 的问题。
+  let monitor_scale = monitor.scale_factor();
   let work_area = monitor.work_area();
+  let work_x = work_area.position.x as f64 / monitor_scale;
+  let work_y = work_area.position.y as f64 / monitor_scale;
+  let work_width = work_area.size.width as f64 / monitor_scale;
+  let work_height = work_area.size.height as f64 / monitor_scale;
+  let window_scale = window.scale_factor().unwrap_or(1.0);
   let window_size = window
     .outer_size()
     .ok()
-    .map(|size| (size.width as i32, size.height as i32))
-    .unwrap_or((fallback_width, fallback_height));
+    .map(|size| (size.width as f64 / window_scale, size.height as f64 / window_scale))
+    .unwrap_or((fallback_width as f64, fallback_height as f64));
 
-  let x = work_area.position.x + work_area.size.width as i32 - window_size.0 - WINDOW_MARGIN;
-  let y = work_area.position.y + work_area.size.height as i32 - window_size.1 - WINDOW_MARGIN;
+  let x = work_x + work_width - window_size.0 - WINDOW_MARGIN as f64;
+  let y = work_y + work_height - window_size.1 - WINDOW_MARGIN as f64;
 
-  let _ = window.set_position(Position::Physical(PhysicalPosition::new(
-    x.max(work_area.position.x),
-    y.max(work_area.position.y),
+  let _ = window.set_position(Position::Logical(LogicalPosition::new(
+    x.max(work_x),
+    y.max(work_y),
   )));
 }
 
