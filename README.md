@@ -122,7 +122,7 @@ Windows ARM64 提供 NSIS 安装程序，Windows x64 另提供 MSI；macOS 提�
 
 `src/renderer/public/calendar-icon.svg` 是新版 macOS 风格日历图标的矢量原稿（固定数字 17 是品牌图案，不表示当天日期）。编辑后执行 `npm run icons`，自动更新 Tauri 各平台图标，以及 `resources/icon.png` 和 `resources/icon.ico`。网页标识及 favicon 直接使用同一 SVG。
 
-托盘日期由 `scripts/generate-date-icons.mjs` 单独生成，采用大号深色数字、白底和窄红条，并输出 64px PNG，适配小尺寸托盘和高 DPI；应用标题栏保留带装饰的日期图标。Windows 日历弹窗与任务栏之间仅留 4 个逻辑像素，并优先显示在托盘所在屏幕。
+托盘日期由 `scripts/generate-date-icons.mjs` 单独生成，采用大号深色数字、白底和窄红条，并输出 64px PNG，适配小尺寸托盘和高 DPI；应用标题栏保留带装饰的日期图标。Windows 日历弹窗与任务栏之间仅留 1 个逻辑像素，并优先显示在托盘所在屏幕。
 
 假期倒计时始终以今天为基准，切换月份或选中其他日期不会改变倒计时；选中日期的农历和假期详情独立显示。
 
