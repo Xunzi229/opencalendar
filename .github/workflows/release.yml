@@ -146,6 +146,25 @@ jobs:
         run: |
           npm run build
           cargo test --manifest-path src-tauri/Cargo.toml --locked --target aarch64-apple-darwin
+      - name: Map prerelease version for Windows MSI
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { version } = require('./package.json');
+          const [base, prerelease] = version.split('-');
+          if (prerelease) {
+            const build = Number(prerelease.match(/(\d+)$/)?.[1] ?? 0);
+            if (!Number.isSafeInteger(build) || build > 65535) {
+              throw new Error('MSI prerelease build number must be between 0 and 65535');
+            }
+            const msiVersion = `${base}.${build}`;
+            const config = { bundle: { windows: { wix: { version: msiVersion } } } };
+            fs.writeFileSync('src-tauri/tauri.windows.conf.json', JSON.stringify(config, null, 2));
+            console.log(`MSI installer version: ${msiVersion}; application version: ${version}`);
+          }
+          NODE
       - name: Build and upload release installers
         uses: tauri-apps/tauri-action@v0
         env:
