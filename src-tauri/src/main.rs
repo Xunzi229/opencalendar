@@ -7,6 +7,7 @@ use std::{
   time::{Duration, Instant},
 };
 
+mod autostart;
 mod date_icon;
 mod tray_position;
 
@@ -29,11 +30,12 @@ const CALENDAR_TASKBAR_GAP: f64 = 4.0;
 const DEFAULT_WINDOW_WIDTH: i32 = 420;
 const DEFAULT_WINDOW_HEIGHT: i32 = 540;
 const SETTINGS_WINDOW_WIDTH: i32 = 420;
-const SETTINGS_WINDOW_HEIGHT: i32 = 360;
+const SETTINGS_WINDOW_HEIGHT: i32 = 480;
 const FOCUS_HIDE_DELAY_MILLIS: u64 = 350;
 const TRAY_TOGGLE_SUPPRESS_MILLIS: u64 = 250;
 
 struct AppState {
+  autostart: Mutex<autostart::Autostart>,
   config_path: PathBuf,
   database_path: PathBuf,
   last_main_window_shown_at: Mutex<Option<Instant>>,
@@ -142,6 +144,16 @@ fn set_api_key(app: AppHandle, state: State<'_, Arc<AppState>>, value: String) -
   app.emit("almanac-updated", Option::<AlmanacRecord>::None)
     .map_err(|error| error.to_string())?;
   Ok(())
+}
+
+#[tauri::command]
+fn is_autostart_enabled(state: State<'_, Arc<AppState>>) -> Result<bool, String> {
+  state.autostart.lock().map_err(|error| error.to_string())?.is_enabled()
+}
+
+#[tauri::command]
+fn set_autostart_enabled(state: State<'_, Arc<AppState>>, enabled: bool) -> Result<bool, String> {
+  state.autostart.lock().map_err(|error| error.to_string())?.set_enabled(enabled)
 }
 
 #[tauri::command]
@@ -268,6 +280,8 @@ fn main() {
       get_clock_snapshot,
       get_api_key,
       set_api_key,
+      is_autostart_enabled,
+      set_autostart_enabled,
       close_current_window,
       report_calendar_size,
       get_almanac
@@ -286,8 +300,12 @@ fn main() {
 fn initialize_state(app: &App) -> Result<AppState, Box<dyn std::error::Error>> {
   let app_dir = app.path().app_data_dir()?;
   fs::create_dir_all(&app_dir)?;
+  let executable = std::env::current_exe()?;
+  #[cfg(target_os = "linux")]
+  let executable = app.env().appimage.unwrap_or(executable);
 
   let state = AppState {
+    autostart: Mutex::new(autostart::Autostart::new(executable)?),
     config_path: app_dir.join("calendar.config.json"),
     database_path: app_dir.join("calendar-cache.sqlite"),
     last_main_window_shown_at: Mutex::new(None),
@@ -326,7 +344,7 @@ fn initialize_database(path: &Path) -> Result<(), String> {
 fn build_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
   let show = MenuItem::with_id(app, "show", "显示日期", true, None::<&str>)?;
   let hide = MenuItem::with_id(app, "hide", "隐藏日历", true, None::<&str>)?;
-  let settings = MenuItem::with_id(app, "settings", "配置黄历 TianAPI Key", true, None::<&str>)?;
+  let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
   let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
   let menu = Menu::with_items(app, &[&show, &hide, &settings, &quit])?;
   let app_handle = app.handle().clone();
@@ -406,7 +424,7 @@ fn open_settings_window(app: &AppHandle) {
     "settings",
     WebviewUrl::App("index.html?view=settings".into()),
   )
-  .title("Configure TianAPI Key")
+  .title("日历设置")
   .inner_size(SETTINGS_WINDOW_WIDTH as f64, SETTINGS_WINDOW_HEIGHT as f64)
   .resizable(false)
   .minimizable(false)

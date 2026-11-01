@@ -11,6 +11,8 @@ export interface DesktopApi {
   getClockSnapshot(): Promise<ClockSnapshot>
   getApiKey(): Promise<string>
   setApiKey(value: string): Promise<void>
+  isAutostartEnabled(): Promise<boolean>
+  setAutostartEnabled(enabled: boolean): Promise<boolean>
   closeCurrentWindow(): Promise<void>
   reportCalendarSize(size: { width: number; height: number }): Promise<void>
   onClockChanged(listener: (snapshot: ClockSnapshot) => void): () => void
@@ -89,6 +91,12 @@ const browserDesktopApi: DesktopApi = {
     }
   },
   async closeCurrentWindow(): Promise<void> {},
+  async isAutostartEnabled(): Promise<boolean> {
+    throw new Error('浏览器预览不支持开机自动启动')
+  },
+  async setAutostartEnabled(): Promise<boolean> {
+    throw new Error('浏览器预览不支持开机自动启动')
+  },
   async reportCalendarSize(): Promise<void> {},
   onClockChanged(): () => void {
     return () => {}
@@ -116,6 +124,12 @@ const tauriDesktopApi: DesktopApi = {
   },
   closeCurrentWindow() {
     return invoke('close_current_window')
+  },
+  isAutostartEnabled() {
+    return invoke<boolean>('is_autostart_enabled')
+  },
+  setAutostartEnabled(enabled) {
+    return invoke<boolean>('set_autostart_enabled', { enabled })
   },
   reportCalendarSize(size) {
     return invoke('report_calendar_size', size)

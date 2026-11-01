@@ -63,7 +63,7 @@ const text = {
   noHolidayData:
     '\u5f53\u524d\u5e74\u4efd\u6682\u65e0\u8be5\u8282\u5047\u65e5\u6570\u636e',
   zodiacHorse: '\u9a6c',
-  settingsTitle: '\u914d\u7f6e TianAPI Key',
+  settingsTitle: '\u8bbe\u7f6e',
   apiKeyLabel: 'TianAPI Key',
   save: '\u4fdd\u5b58',
   clear: '\u6e05\u9664',

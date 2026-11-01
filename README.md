@@ -13,6 +13,7 @@
 - 内置 TianAPI Key 设置面板
 - 本地 SQLite 缓存黄历数据
 - Tauri 系统托盘控制主窗口显示与隐藏
+- 开机自动启动设置，读取系统实际启动项状态，兼容 Windows、macOS 和 Linux
 
 ## 技术栈
 
@@ -93,7 +94,13 @@ opencalendar/
 ## 说明
 
 - 浏览器模式下仍可通过 `npm run dev` 开发界面，桌面 API 会自动回退到浏览器实现。
-- 由于当前机器未安装 Rust 工具链，Tauri 桌面端尚未在本机完成编译验证；安装 Rust 后即可继续联调。
+- 桌面端编译需同时安装 Rust 和平台构建依赖；Windows 还需要 MSVC C++ Build Tools 与 Windows SDK。
+
+## 开机自动启动
+
+在托盘菜单中打开“设置”，开启“开机自动启动”即可在下次登录系统后自动运行并驻留托盘；关闭开关会移除对应启动项。首次打开和重新返回设置页时会重新读取系统状态，修改后再次读取确认，不依赖本地缓存的开关值。
+
+Windows 注册当前用户启动项，并检测任务管理器中的禁用状态；macOS 使用 LaunchAgent；Linux 使用 XDG 自启动项，遵循 `XDG_CONFIG_HOME`（AppImage 使用原始 AppImage 路径）。默认不启用；设置会立即生效，无需点击 TianAPI Key 的保存按钮。Windows 免安装 EXE 和 Linux AppImage 应先放到固定位置，再开启自动启动；移动文件后重新开启开关即可更新启动路径。
 
 ## 自动发布
 
