@@ -1,4 +1,5 @@
 // All inputs are physical desktop pixels. Work areas can have negative origins.
+#[cfg(any(target_os = "macos", test))]
 pub fn below_tray(
   tray: (f64, f64, f64, f64),
   window: (f64, f64),
@@ -14,9 +15,42 @@ pub fn below_tray(
   (x.round() as i32, y.round() as i32)
 }
 
+// Inputs use the same coordinate space (logical pixels in the desktop caller).
+pub fn bottom_right(
+  window: (f64, f64),
+  work: (f64, f64, f64, f64),
+  gap: f64,
+) -> (f64, f64) {
+  (
+    (work.0 + work.2 - window.0 - gap).max(work.0),
+    (work.1 + work.3 - window.1 - gap).max(work.1),
+  )
+}
+
 #[cfg(test)]
 mod tests {
-  use super::below_tray;
+  use super::{below_tray, bottom_right};
+
+  #[test]
+  fn keeps_calendar_four_pixels_above_taskbar_after_resize() {
+    let work = (0.0, 0.0, 1920.0, 1040.0);
+    assert_eq!(bottom_right((420.0, 540.0), work, 4.0), (1496.0, 496.0));
+    assert_eq!(bottom_right((420.0, 650.0), work, 4.0), (1496.0, 386.0));
+  }
+
+  #[test]
+  fn scales_taskbar_gap_with_high_dpi_and_negative_monitor_origin() {
+    // A 150% monitor to the left of the primary display, in logical pixels.
+    let work = (-1280.0, 0.0, 1280.0, 1040.0 / 1.5);
+    let (x, y) = bottom_right((420.0, 540.0), work, 4.0);
+    assert_eq!(x, -424.0);
+    assert!(((work.1 + work.3 - y - 540.0) * 1.5 - 6.0).abs() < 0.001);
+  }
+
+  #[test]
+  fn clamps_oversized_calendar_to_work_area_origin() {
+    assert_eq!(bottom_right((420.0, 540.0), (-320.0, 24.0, 320.0, 300.0), 4.0), (-320.0, 24.0));
+  }
 
   #[test]
   fn centers_below_menu_bar_and_stays_anchored_after_resize() {

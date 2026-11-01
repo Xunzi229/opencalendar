@@ -8,7 +8,6 @@ use std::{
 };
 
 mod date_icon;
-#[cfg(any(target_os = "macos", test))]
 mod tray_position;
 
 use chrono::{Datelike, Local};
@@ -26,6 +25,7 @@ use tauri::{
 
 const CLOCK_POLL_INTERVAL_SECONDS: u64 = 30;
 const WINDOW_MARGIN: i32 = 12;
+const CALENDAR_TASKBAR_GAP: f64 = 4.0;
 const DEFAULT_WINDOW_WIDTH: i32 = 420;
 const DEFAULT_WINDOW_HEIGHT: i32 = 540;
 const SETTINGS_WINDOW_WIDTH: i32 = 420;
@@ -557,7 +557,7 @@ fn position_main_window(window: &WebviewWindow) {
   position_window_bottom_right(window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn monitor_containing(window: &WebviewWindow, x: f64, y: f64) -> Option<tauri::Monitor> {
   window.available_monitors().ok()?.into_iter().find(|monitor| {
     let position = monitor.position();
@@ -568,7 +568,7 @@ fn monitor_containing(window: &WebviewWindow, x: f64, y: f64) -> Option<tauri::M
   })
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn tray_anchor(window: &WebviewWindow) -> Option<(f64, f64, f64, f64)> {
   if let Ok(slot) = window.app_handle().state::<Arc<AppState>>().tray_anchor.lock() {
     if slot.is_some() {
@@ -637,7 +637,18 @@ fn record_main_window_hidden_at(app: &AppHandle) {
 }
 
 fn position_window_bottom_right(window: &WebviewWindow, fallback_width: i32, fallback_height: i32) {
-  let Ok(Some(monitor)) = window.primary_monitor() else {
+  // Windows 从托盘所在屏幕弹出；工作区已扣除任务栏高度，无需再留一层任务栏边距。
+  #[cfg(target_os = "windows")]
+  let tray_monitor = if window.label() == "main" {
+    tray_anchor(window).and_then(|(x, y, width, height)| {
+      monitor_containing(window, x + width / 2.0, y + height / 2.0)
+    })
+  } else {
+    None
+  };
+  #[cfg(not(target_os = "windows"))]
+  let tray_monitor: Option<tauri::Monitor> = None;
+  let Some(monitor) = tray_monitor.or_else(|| window.primary_monitor().ok().flatten()) else {
     return;
   };
 
@@ -655,13 +666,25 @@ fn position_window_bottom_right(window: &WebviewWindow, fallback_width: i32, fal
     .map(|size| (size.width as f64 / window_scale, size.height as f64 / window_scale))
     .unwrap_or((fallback_width as f64, fallback_height as f64));
 
-  let x = work_x + work_width - window_size.0 - WINDOW_MARGIN as f64;
-  let y = work_y + work_height - window_size.1 - WINDOW_MARGIN as f64;
+  let gap = if cfg!(target_os = "windows") && window.label() == "main" {
+    CALENDAR_TASKBAR_GAP
+  } else {
+    WINDOW_MARGIN as f64
+  };
+  let (x, y) = tray_position::bottom_right(
+    window_size,
+    (work_x, work_y, work_width, work_height),
+    gap,
+  );
 
-  let _ = window.set_position(Position::Logical(LogicalPosition::new(
-    x.max(work_x),
-    y.max(work_y),
-  )));
+  #[cfg(target_os = "windows")]
+  let position = Position::Physical(tauri::PhysicalPosition::new(
+    (x * monitor_scale).round() as i32,
+    (y * monitor_scale).round() as i32,
+  ));
+  #[cfg(not(target_os = "windows"))]
+  let position = Position::Logical(LogicalPosition::new(x, y));
+  let _ = window.set_position(position);
 }
 
 fn start_clock_broadcast(app: AppHandle) {

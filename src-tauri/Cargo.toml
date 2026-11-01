@@ -1,6 +1,6 @@
 [package]
 name = "opencalendar"
-version = "0.2.4"
+version = "0.2.5-beta.1"
 description = "Desktop Chinese calendar built with Tauri"
 edition = "2021"
 

@@ -41,10 +41,10 @@ pub fn for_day(day: u32) -> tauri::Result<Image<'static>> {
 #[cfg(test)]
 mod tests {
   #[test]
-  fn every_date_decodes_to_a_retina_tray_icon() {
+  fn every_date_decodes_to_a_high_resolution_tray_icon() {
     for day in 1..=31 {
       let icon = super::for_day(day).unwrap();
-      assert_eq!((icon.width(), icon.height()), (44, 44));
+      assert_eq!((icon.width(), icon.height()), (64, 64));
     }
   }
 }

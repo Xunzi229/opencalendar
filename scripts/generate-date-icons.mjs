@@ -34,10 +34,23 @@ try {
     const svg = base.replace(/<g fill="url\(#ink\)">[\s\S]*?<\/g>/, mark)
     const path = join(publicDir, `${day}.svg`)
     writeFileSync(path, svg)
-    const result = spawnSync(process.execPath, [cli, 'icon', path, '--output', scratch, '--png', '44'], { cwd: root, encoding: 'utf8' })
+    // The tray is usually only 16–22px. A flat tile and large, dark numerals
+    // stay legible there; keep the decorative calendar for the app header.
+    const scaleX = chars.length === 1 ? 0.36 : 0.23
+    const numeralWidth = (chars.length === 1 ? 50 : 116) * scaleX
+    const traySvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <title>日历 · ${day}日</title>
+  <rect width="32" height="32" rx="4" fill="#ffffff"/>
+  <path d="M4 0H28Q32 0 32 4V5H0V4Q0 0 4 0Z" fill="#e5484d"/>
+  <g transform="translate(${(32 - numeralWidth) / 2} 8) scale(${scaleX} 0.28)" fill="none" stroke="#111827" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">${paths}</g>
+</svg>`
+    const trayPath = join(scratch, `${day}.svg`)
+    writeFileSync(trayPath, traySvg)
+    // 64px gives Windows exact 4x / 2x sources for 16px / 32px tray icons.
+    const result = spawnSync(process.execPath, [cli, 'icon', trayPath, '--output', scratch, '--png', '64'], { cwd: root, encoding: 'utf8' })
     if (result.error) throw result.error
     if (result.status !== 0) throw new Error(result.stderr || result.stdout)
-    copyFileSync(join(scratch, '44x44.png'), join(trayDir, `${day}.png`))
+    copyFileSync(join(scratch, '64x64.png'), join(trayDir, `${day}.png`))
   }
 } finally {
   rmSync(scratch, { recursive: true, force: true })
