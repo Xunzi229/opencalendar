@@ -68,6 +68,12 @@ button:disabled {
 [data-runtime='desktop'] .app-shell {
   background: transparent;
 }
+[data-runtime='desktop'] .app-shell {
+  overflow: hidden;
+}
+[data-runtime='desktop'] .calendar-window {
+  opacity: 0;
+}
 .calendar-window {
   width: 100%;
   background: var(--calendar-surface);

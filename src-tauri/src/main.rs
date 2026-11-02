@@ -227,6 +227,15 @@ async fn get_almanac(
 
 fn main() {
   #[allow(unused_mut)]
+  let mut context = tauri::generate_context!();
+  // The sliding surface needs a transparent native backdrop, including its
+  // rounded corners. macOS configures this through NSWindow when showing.
+  #[cfg(any(target_os = "windows", target_os = "linux"))]
+  if let Some(window) = context.config_mut().app.windows.iter_mut().find(|window| window.label == "main") {
+    window.transparent = true;
+  }
+
+  #[allow(unused_mut)]
   let mut app = tauri::Builder::default()
     .setup(|app| {
       let state = initialize_state(app)?;
@@ -236,7 +245,6 @@ fn main() {
 
       if let Some(window) = app.get_webview_window("main") {
         let app_handle = app.handle().clone();
-        let window_handle = window.clone();
         window.on_window_event(move |event| {
           let WindowEvent::Focused(focused) = event else {
             return;
@@ -268,8 +276,7 @@ fn main() {
             .unwrap_or(true);
 
           if should_hide {
-            record_main_window_hidden_at(&app_handle);
-            let _ = window_handle.hide();
+            hide_main_window(&app_handle);
           }
         });
       }
@@ -286,7 +293,7 @@ fn main() {
       report_calendar_size,
       get_almanac
     ])
-    .build(tauri::generate_context!())
+    .build(context)
     .expect("error while building tauri application");
 
   // setup 时事件循环已经按普通应用启动，窗口被分到自己的桌面空间。
@@ -407,6 +414,7 @@ fn hide_main_window(app: &AppHandle) {
   if let Some(window) = app.get_webview_window("main") {
     record_main_window_hidden_at(app);
     let _ = window.hide();
+    let _ = window.emit("calendar-hidden", ());
   }
 }
 
@@ -451,8 +459,7 @@ fn toggle_main_window(app: &AppHandle, anchor: Option<(f64, f64, f64, f64)>) {
   if let Some(window) = app.get_webview_window("main") {
     match window.is_visible() {
       Ok(true) => {
-        record_main_window_hidden_at(app);
-        let _ = window.hide();
+        hide_main_window(app);
       }
       _ => {
         let hidden_too_recently = app

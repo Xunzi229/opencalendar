@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { desktopApi } from './api/desktop'
+import { desktopApi, isTauriRuntime } from './api/desktop'
+import { attachPopupAnimation } from './popupAnimation'
 import { holidaySync } from './holidaySync'
 import type { AlmanacRecord } from '../../shared/almanac/types'
 import type { ClockSnapshot } from '../../shared/clock/types'
@@ -48,6 +49,12 @@ export function CalendarApp(): React.ReactElement {
   const [almanacRecord, setAlmanacRecord] = useState<AlmanacRecord | null>(null)
   const [almanacRevision, setAlmanacRevision] = useState(0)
   const previousTodayKeyRef = useRef(formatDate(now))
+
+  useEffect(() => {
+    if (isTauriRuntime() && calendarWindowRef.current) {
+      return attachPopupAnimation(calendarWindowRef.current)
+    }
+  }, [])
 
   const availableYears = useMemo(
     () => ({ ...holidayRangesByYear, ...holidayData.years }),
