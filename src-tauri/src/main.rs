@@ -309,7 +309,7 @@ fn initialize_state(app: &App) -> Result<AppState, Box<dyn std::error::Error>> {
   fs::create_dir_all(&app_dir)?;
   let executable = std::env::current_exe()?;
   #[cfg(target_os = "linux")]
-  let executable = app.env().appimage.unwrap_or(executable);
+  let executable = app.env().appimage.map(PathBuf::from).unwrap_or(executable);
 
   let state = AppState {
     autostart: Mutex::new(autostart::Autostart::new(executable)?),
