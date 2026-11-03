@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { desktopApi, isTauriRuntime } from './api/desktop'
 import { attachPopupAnimation } from './popupAnimation'
+import { usePreferences } from './usePreferences'
 import { holidaySync } from './holidaySync'
 import type { AlmanacRecord } from '../../shared/almanac/types'
 import type { ClockSnapshot } from '../../shared/clock/types'
@@ -30,6 +31,7 @@ import {
 import type { CalendarDay, HolidayKey } from './calendar'
 
 export function CalendarApp(): React.ReactElement {
+  const preferences = usePreferences()
   const calendarWindowRef = useRef<HTMLElement | null>(null)
   const lastClockSnapshotRef = useRef<ClockSnapshot | null>(null)
   const [holidayData, setHolidayData] = useState(() => holidaySync.read())
@@ -403,19 +405,7 @@ export function CalendarApp(): React.ReactElement {
       }}
     >
       <section ref={calendarWindowRef} className="calendar-window">
-        <div className="window-heading">
-          <div>
-            <img
-              className="app-mark"
-              src={`./date-icons/${now.getDate()}.svg`}
-              alt=""
-              aria-hidden="true"
-            />
-            <span>日历</span>
-          </div>
-          <span className="window-subtitle">农历 · 节假日</span>
-        </div>
-        <header className="toolbar">
+        <header className="toolbar" aria-label="日历导航">
           <div
             className="toolbar-start"
             onClick={(event) => event.stopPropagation()}
@@ -582,7 +572,7 @@ export function CalendarApp(): React.ReactElement {
                 key={day}
                 className={classNames('week-day', index > 4 && 'weekend')}
               >
-                {day}
+                周{day}
               </div>
             ))}
           </div>
@@ -607,20 +597,23 @@ export function CalendarApp(): React.ReactElement {
                   )}
                   onClick={() => selectDay(day)}
                 >
-                  {day.badge && (
-                    <span
-                      className={classNames(
-                        'day-badge',
-                        day.badge === 'rest' && 'badge-rest',
-                        day.badge === 'work' && 'badge-work',
-                        day.badge === 'today' && 'badge-today',
-                      )}
-                    >
-                      {badgeText(day.badge)}
-                    </span>
-                  )}
+                  {preferences.showBadges &&
+                    day.badge &&
+                    day.badge !== 'today' && (
+                      <span
+                        className={classNames(
+                          'day-badge',
+                          day.badge === 'rest' && 'badge-rest',
+                          day.badge === 'work' && 'badge-work',
+                        )}
+                      >
+                        {badgeText(day.badge)}
+                      </span>
+                    )}
                   <span className="day-number">{day.day}</span>
-                  <span className="lunar-text">{day.lunar}</span>
+                  {preferences.showLunar && (
+                    <span className="lunar-text">{day.lunar}</span>
+                  )}
                 </button>
               )
             })}
@@ -630,7 +623,8 @@ export function CalendarApp(): React.ReactElement {
         <footer className="detail-panel">
           <div className="selection-summary">
             <span>
-              {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日{' '}
+              {selectedDate.getFullYear()}年{selectedDate.getMonth() + 1}月
+              {selectedDate.getDate()}日{' '}
               <span className="summary-lunar">
                 {selectedLunar.month}
                 {selectedLunar.day}
