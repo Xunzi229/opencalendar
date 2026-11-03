@@ -233,12 +233,9 @@ fn main() {
   #[cfg(any(target_os = "windows", target_os = "linux"))]
   if let Some(window) = context.config_mut().app.windows.iter_mut().find(|window| window.label == "main") {
     window.transparent = true;
-    // On Windows, native shadows on undecorated windows also draw a 1px
-    // white frame. That frame leaks outside the WebView's 28px CSS corners.
-    #[cfg(target_os = "windows")]
-    {
-      window.shadow = false;
-    }
+    // The WebView owns the popup outline. Windows native shadows add a 1px
+    // white frame; a compositor frame must not sit behind the CSS corners.
+    window.shadow = false;
   }
 
   #[allow(unused_mut)]
@@ -501,7 +498,7 @@ fn configure_popup_window(window: &WebviewWindow) {
     let Some(ns_window) = ns_window(&window) else {
       return;
     };
-    configure_ns_window(&ns_window);
+    configure_ns_window(&ns_window, window.label() == "main");
   });
 }
 
@@ -512,7 +509,7 @@ fn ns_window(window: &WebviewWindow) -> Option<objc2::rc::Retained<objc2_app_kit
 }
 
 #[cfg(target_os = "macos")]
-fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow) {
+fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow, calendar_popup: bool) {
   // CanJoinAllSpaces 会让窗口常驻所有空间，切换空间时它先跟过去再被失焦隐藏，看起来像闪一下。
   // 弹出时会 makeKey 并激活应用，MoveToActiveSpace 只在这一刻把窗口挪到当前空间。
   ns_window.setLevel(objc2_app_kit::NSPopUpMenuWindowLevel);
@@ -522,7 +519,7 @@ fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow) {
       | objc2_app_kit::NSWindowCollectionBehavior::CanJoinAllApplications
       | objc2_app_kit::NSWindowCollectionBehavior::FullScreenAuxiliary,
   );
-  round_window_corners(ns_window);
+  round_window_corners(ns_window, calendar_popup);
 }
 
 #[cfg(target_os = "macos")]
@@ -538,20 +535,23 @@ where
 }
 
 #[cfg(target_os = "macos")]
-fn round_window_corners(ns_window: &objc2_app_kit::NSWindow) {
-  const CORNER_RADIUS: f64 = 16.0;
+fn round_window_corners(ns_window: &objc2_app_kit::NSWindow, calendar_popup: bool) {
+  // For the calendar, CSS alone defines all four corners. A second native
+  // radius or shadow would outline a different shape (also during animation).
+  // The decorated settings window keeps its native rounding and shadow.
+  let corner_radius = if calendar_popup { 0.0 } else { 16.0 };
 
   ns_window.setOpaque(false);
   ns_window.setBackgroundColor(Some(&objc2_app_kit::NSColor::clearColor()));
-  ns_window.setHasShadow(true);
+  ns_window.setHasShadow(!calendar_popup);
 
   let Some(content) = ns_window.contentView() else {
     return;
   };
-  round_view(&content, CORNER_RADIUS);
+  round_view(&content, corner_radius);
   let subviews = content.subviews();
   for index in 0..subviews.count() {
-    round_view(&subviews.objectAtIndex(index), CORNER_RADIUS);
+    round_view(&subviews.objectAtIndex(index), corner_radius);
   }
   ns_window.invalidateShadow();
 }

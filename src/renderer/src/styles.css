@@ -79,6 +79,8 @@ button:disabled {
   overflow: hidden;
 }
 [data-runtime='desktop'] .calendar-window {
+  border: 0;
+  box-shadow: none;
   opacity: 0;
 }
 .calendar-window {
