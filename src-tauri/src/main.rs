@@ -233,6 +233,12 @@ fn main() {
   #[cfg(any(target_os = "windows", target_os = "linux"))]
   if let Some(window) = context.config_mut().app.windows.iter_mut().find(|window| window.label == "main") {
     window.transparent = true;
+    // On Windows, native shadows on undecorated windows also draw a 1px
+    // white frame. That frame leaks outside the WebView's 28px CSS corners.
+    #[cfg(target_os = "windows")]
+    {
+      window.shadow = false;
+    }
   }
 
   #[allow(unused_mut)]
