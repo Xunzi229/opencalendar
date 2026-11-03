@@ -29,8 +29,8 @@ const WINDOW_MARGIN: i32 = 12;
 const CALENDAR_TASKBAR_GAP: f64 = 1.0;
 const DEFAULT_WINDOW_WIDTH: i32 = 420;
 const DEFAULT_WINDOW_HEIGHT: i32 = 540;
-const SETTINGS_WINDOW_WIDTH: i32 = 680;
-const SETTINGS_WINDOW_HEIGHT: i32 = 520;
+const SETTINGS_WINDOW_WIDTH: i32 = 580;
+const SETTINGS_WINDOW_HEIGHT: i32 = 460;
 const FOCUS_HIDE_DELAY_MILLIS: u64 = 350;
 const TRAY_TOGGLE_SUPPRESS_MILLIS: u64 = 250;
 
@@ -430,12 +430,15 @@ fn open_settings_window(app: &AppHandle) {
     return;
   }
 
-  let builder = WebviewWindowBuilder::new(
+  #[allow(unused_mut)]
+  let mut builder = WebviewWindowBuilder::new(
     app,
     "settings",
     WebviewUrl::App("index.html?view=settings".into()),
   )
   .title("日历设置")
+  .decorations(false)
+  .shadow(false)
   .inner_size(SETTINGS_WINDOW_WIDTH as f64, SETTINGS_WINDOW_HEIGHT as f64)
   .resizable(false)
   .minimizable(false)
@@ -443,6 +446,13 @@ fn open_settings_window(app: &AppHandle) {
   .always_on_top(true)
   .skip_taskbar(true)
   .visible(false);
+
+  // Match the calendar: CSS owns the complete outline on every platform.
+  // macOS clears the NSWindow/WKWebView background in prepare_popup_window.
+  #[cfg(any(target_os = "windows", target_os = "linux"))]
+  {
+    builder = builder.transparent(true);
+  }
 
   if let Ok(window) = builder.build() {
     position_window_bottom_right(&window, SETTINGS_WINDOW_WIDTH, SETTINGS_WINDOW_HEIGHT);
@@ -498,7 +508,7 @@ fn configure_popup_window(window: &WebviewWindow) {
     let Some(ns_window) = ns_window(&window) else {
       return;
     };
-    configure_ns_window(&ns_window, window.label() == "main");
+    configure_ns_window(&ns_window);
   });
 }
 
@@ -509,7 +519,7 @@ fn ns_window(window: &WebviewWindow) -> Option<objc2::rc::Retained<objc2_app_kit
 }
 
 #[cfg(target_os = "macos")]
-fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow, calendar_popup: bool) {
+fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow) {
   // CanJoinAllSpaces 会让窗口常驻所有空间，切换空间时它先跟过去再被失焦隐藏，看起来像闪一下。
   // 弹出时会 makeKey 并激活应用，MoveToActiveSpace 只在这一刻把窗口挪到当前空间。
   ns_window.setLevel(objc2_app_kit::NSPopUpMenuWindowLevel);
@@ -519,7 +529,7 @@ fn configure_ns_window(ns_window: &objc2_app_kit::NSWindow, calendar_popup: bool
       | objc2_app_kit::NSWindowCollectionBehavior::CanJoinAllApplications
       | objc2_app_kit::NSWindowCollectionBehavior::FullScreenAuxiliary,
   );
-  round_window_corners(ns_window, calendar_popup);
+  round_window_corners(ns_window);
 }
 
 #[cfg(target_os = "macos")]
@@ -535,15 +545,14 @@ where
 }
 
 #[cfg(target_os = "macos")]
-fn round_window_corners(ns_window: &objc2_app_kit::NSWindow, calendar_popup: bool) {
-  // For the calendar, CSS alone defines all four corners. A second native
-  // radius or shadow would outline a different shape (also during animation).
-  // The decorated settings window keeps its native rounding and shadow.
-  let corner_radius = if calendar_popup { 0.0 } else { 16.0 };
+fn round_window_corners(ns_window: &objc2_app_kit::NSWindow) {
+  // Calendar and settings both use CSS corners. Do not overlay a second
+  // native radius or shadow with a different outline.
+  let corner_radius = 0.0;
 
   ns_window.setOpaque(false);
   ns_window.setBackgroundColor(Some(&objc2_app_kit::NSColor::clearColor()));
-  ns_window.setHasShadow(!calendar_popup);
+  ns_window.setHasShadow(false);
 
   let Some(content) = ns_window.contentView() else {
     return;

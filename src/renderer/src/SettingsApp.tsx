@@ -277,8 +277,31 @@ export function SettingsApp(): React.ReactElement {
           <span className="settings-sidebar-caption">简单一点，从容每一天</span>
         </aside>
         <div className="settings-content">
-          <header className="settings-page-header">
-            <h1>{settingsPages.find((item) => item.id === page)?.label}</h1>
+          <header className="settings-page-header" data-tauri-drag-region>
+            <h1 data-tauri-drag-region>
+              {settingsPages.find((item) => item.id === page)?.label}
+            </h1>
+            <button
+              type="button"
+              className="settings-close-button"
+              aria-label="关闭设置"
+              title="关闭设置"
+              disabled={busy || autostartSaving}
+              onClick={() => void closeSettings()}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="m4 4 8 8M12 4l-8 8" />
+              </svg>
+            </button>
           </header>
           <div
             className="settings-page"
