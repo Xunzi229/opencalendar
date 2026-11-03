@@ -1027,3 +1027,9 @@ button:disabled {
     transition: none;
   }
 }
+
+/* Scroll anchoring is handled explicitly when older years are prepended. */
+.year-menu {
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+}

@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { desktopApi, isTauriRuntime } from './api/desktop'
 import { attachPopupAnimation } from './popupAnimation'
 import { usePreferences } from './usePreferences'
@@ -32,6 +38,10 @@ import type { CalendarDay, HolidayKey } from './calendar'
 
 export function CalendarApp(): React.ReactElement {
   const preferences = usePreferences()
+  const yearMenuRef = useRef<HTMLDivElement | null>(null)
+  const yearScrollAnchorRef = useRef<{ height: number; top: number } | null>(
+    null,
+  )
   const calendarWindowRef = useRef<HTMLElement | null>(null)
   const lastClockSnapshotRef = useRef<ClockSnapshot | null>(null)
   const [holidayData, setHolidayData] = useState(() => holidaySync.read())
@@ -45,8 +55,8 @@ export function CalendarApp(): React.ReactElement {
   const [monthMenuOpen, setMonthMenuOpen] = useState(false)
   const [holidayMenuOpen, setHolidayMenuOpen] = useState(false)
   const [yearWindow, setYearWindow] = useState({
-    start: currentYear - 4,
-    end: currentYear + 6,
+    start: currentYear - 10,
+    end: currentYear + 10,
   })
   const [almanacRecord, setAlmanacRecord] = useState<AlmanacRecord | null>(null)
   const [almanacRevision, setAlmanacRevision] = useState(0)
@@ -127,6 +137,27 @@ export function CalendarApp(): React.ReactElement {
     () => buildYearWindow(yearWindow.start, yearWindow.end),
     [yearWindow],
   )
+
+  useLayoutEffect(() => {
+    if (!yearMenuOpen) return
+    const menu = yearMenuRef.current
+    const selected = menu?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (menu && selected) {
+      // Open at the viewed year, with older years above it ready to scroll into.
+      menu.scrollTop =
+        selected.offsetTop - (menu.clientHeight - selected.offsetHeight) / 2
+    }
+  }, [yearMenuOpen])
+
+  useLayoutEffect(() => {
+    const menu = yearMenuRef.current
+    const anchor = yearScrollAnchorRef.current
+    yearScrollAnchorRef.current = null
+    if (menu && anchor) {
+      // React prepends older years; preserve the same visible year under the pointer.
+      menu.scrollTop = anchor.top + menu.scrollHeight - anchor.height
+    }
+  }, [yearWindow.start])
 
   function jumpToDate(date: Date): void {
     setViewYear(date.getFullYear())
@@ -312,8 +343,8 @@ export function CalendarApp(): React.ReactElement {
 
   function ensureYearVisible(year: number): void {
     setYearWindow((current) => ({
-      start: Math.min(current.start, year - 4),
-      end: Math.max(current.end, year + 6),
+      start: Math.min(current.start, year - 10),
+      end: Math.max(current.end, year + 10),
     }))
   }
 
@@ -340,7 +371,11 @@ export function CalendarApp(): React.ReactElement {
     const nearBottom =
       target.scrollHeight - target.scrollTop - target.clientHeight < 24
 
-    if (nearTop) {
+    if (nearTop && !yearScrollAnchorRef.current) {
+      yearScrollAnchorRef.current = {
+        height: target.scrollHeight,
+        top: target.scrollTop,
+      }
       setYearWindow((current) => ({ ...current, start: current.start - 10 }))
     }
 
@@ -472,13 +507,8 @@ export function CalendarApp(): React.ReactElement {
                 aria-label={text.year}
                 className="control year-picker-button"
                 onClick={() => {
-                  setYearMenuOpen((open) => {
-                    if (!open) {
-                      const year = now.getFullYear()
-                      setYearWindow({ start: year - 4, end: year + 6 })
-                    }
-                    return !open
-                  })
+                  if (!yearMenuOpen) ensureYearVisible(viewYear)
+                  setYearMenuOpen((open) => !open)
                   setMonthMenuOpen(false)
                   setHolidayMenuOpen(false)
                 }}
@@ -490,10 +520,15 @@ export function CalendarApp(): React.ReactElement {
                 <span className="select-caret" aria-hidden="true" />
               </button>
               {yearMenuOpen && (
-                <div className="year-menu" onScroll={handleYearScroll}>
+                <div
+                  ref={yearMenuRef}
+                  className="year-menu"
+                  onScroll={handleYearScroll}
+                >
                   {visibleYears.map((year) => (
                     <button
                       key={year}
+                      aria-pressed={year === viewYear}
                       className={classNames(
                         'year-option',
                         year === viewYear && 'is-active',
