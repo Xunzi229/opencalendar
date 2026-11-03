@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -61,6 +62,31 @@ export function CalendarApp(): React.ReactElement {
   const [almanacRecord, setAlmanacRecord] = useState<AlmanacRecord | null>(null)
   const [almanacRevision, setAlmanacRevision] = useState(0)
   const previousTodayKeyRef = useRef(formatDate(now))
+
+  const closeMenus = useCallback((): void => {
+    setYearMenuOpen(false)
+    setMonthMenuOpen(false)
+    setHolidayMenuOpen(false)
+    yearScrollAnchorRef.current = null
+  }, [])
+
+  useEffect(() => {
+    // Hiding the native window does not unmount React. Reset transient UI on
+    // both edges, including recovery if a platform misses its hidden event.
+    const unsubscribeHidden = desktopApi.onCalendarHidden(closeMenus)
+    const unsubscribeShown = desktopApi.onCalendarShown(closeMenus)
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') closeMenus()
+    }
+    window.addEventListener('blur', closeMenus)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      unsubscribeHidden()
+      unsubscribeShown()
+      window.removeEventListener('blur', closeMenus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [closeMenus])
 
   useEffect(() => {
     if (isTauriRuntime() && calendarWindowRef.current) {
@@ -428,16 +454,10 @@ export function CalendarApp(): React.ReactElement {
       className="app-shell"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
-          setYearMenuOpen(false)
-          setMonthMenuOpen(false)
-          setHolidayMenuOpen(false)
+          closeMenus()
         }
       }}
-      onClick={() => {
-        setYearMenuOpen(false)
-        setMonthMenuOpen(false)
-        setHolidayMenuOpen(false)
-      }}
+      onClick={closeMenus}
     >
       <section ref={calendarWindowRef} className="calendar-window">
         <header className="toolbar" aria-label="日历导航">

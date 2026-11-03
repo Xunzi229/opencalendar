@@ -18,6 +18,7 @@ export interface DesktopApi {
   onClockChanged(listener: (snapshot: ClockSnapshot) => void): () => void
   onAlmanacUpdated(listener: (record: AlmanacRecord | null) => void): () => void
   onCalendarShown(listener: () => void): () => void
+  onCalendarHidden(listener: () => void): () => void
 }
 
 const BROWSER_API_KEY = 'calendar.tianApiKey'
@@ -107,6 +108,9 @@ const browserDesktopApi: DesktopApi = {
   onCalendarShown(): () => void {
     return () => {}
   },
+  onCalendarHidden(): () => void {
+    return () => {}
+  },
 }
 
 const tauriDesktopApi: DesktopApi = {
@@ -142,6 +146,9 @@ const tauriDesktopApi: DesktopApi = {
   },
   onCalendarShown(listener) {
     return subscribe<void>('calendar-shown', listener)
+  },
+  onCalendarHidden(listener) {
+    return subscribe<void>('calendar-hidden', listener)
   },
 }
 
